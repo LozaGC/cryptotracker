@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign } from "lucide-react";
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Sparkles } from "lucide-react";
 import Header from "@/components/Header";
+import PortfolioAnalytics from "@/components/PortfolioAnalytics";
 import { useQuery } from "@tanstack/react-query";
 
 interface Holding {
@@ -148,23 +148,35 @@ const Portfolio = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-40 right-10 w-96 h-96 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 left-1/2 w-80 h-80 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-full blur-3xl animate-pulse" />
+      </div>
+
       <Header />
-      <div className="pt-20 p-8">
+      <div className="pt-20 p-8 relative z-10">
         <div className="max-w-7xl mx-auto">
-          <header className="mb-8">
-            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
-              Portfolio Manager
-            </h1>
-            <p className="text-gray-400">Track and manage your cryptocurrency investments</p>
+          <header className="mb-8 text-center">
+            <div className="flex items-center justify-center space-x-4 mb-4">
+              <Sparkles className="w-8 h-8 text-red-400 animate-pulse" />
+              <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-red-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
+                Portfolio Manager
+              </h1>
+              <Sparkles className="w-8 h-8 text-orange-400 animate-pulse" />
+            </div>
+            <div className="h-1 w-48 bg-gradient-to-r from-red-500 to-orange-400 mx-auto mb-4"></div>
+            <p className="text-xl text-gray-400">Advanced Portfolio Tracking & Analytics for Professional Traders</p>
           </header>
 
-          {/* Portfolio Overview */}
+          {/* Enhanced Portfolio Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300">
+            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300 hover:scale-105 transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">Total Portfolio Value</CardTitle>
-                <DollarSign className="h-4 w-4 text-green-500" />
+                <DollarSign className="h-5 w-5 text-green-500 group-hover:scale-110 transition-transform duration-300" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">{formatCurrency(totalValue)}</div>
@@ -175,20 +187,20 @@ const Portfolio = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300">
+            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-orange-500/30 transition-all duration-300 hover:scale-105 transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">Total Cost</CardTitle>
-                <BarChart3 className="h-4 w-4 text-blue-500" />
+                <BarChart3 className="h-5 w-5 text-blue-500 group-hover:scale-110 transition-transform duration-300" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">{formatCurrency(totalCost)}</div>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300">
+            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-purple-500/30 transition-all duration-300 hover:scale-105 transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">Total P&L</CardTitle>
-                <PieChart className="h-4 w-4 text-orange-500" />
+                <PieChart className="h-5 w-5 text-orange-500 group-hover:scale-110 transition-transform duration-300" />
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -197,10 +209,10 @@ const Portfolio = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300">
+            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-green-500/30 transition-all duration-300 hover:scale-105 transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">Holdings</CardTitle>
-                <TrendingUp className="h-4 w-4 text-purple-500" />
+                <TrendingUp className="h-5 w-5 text-purple-500 group-hover:scale-110 transition-transform duration-300" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">{holdings.length}</div>
@@ -209,9 +221,12 @@ const Portfolio = () => {
             </Card>
           </div>
 
+          {/* Portfolio Analytics */}
+          <PortfolioAnalytics holdings={updatedHoldings} />
+
           {/* Add/Edit Form */}
           {showAddForm && (
-            <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 mb-8">
+            <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 mb-8 hover:border-red-500/30 transition-all duration-300">
               <CardHeader>
                 <CardTitle className="text-xl font-semibold text-white">
                   {editingId ? 'Edit Holding' : 'Add New Holding'}
@@ -223,19 +238,19 @@ const Portfolio = () => {
                     placeholder="Symbol (e.g., BTC)"
                     value={formData.symbol}
                     onChange={(e) => setFormData({...formData, symbol: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
+                    className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
                   />
                   <Input
                     placeholder="Name (e.g., Bitcoin)"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
+                    className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
                   />
                   <Input
                     placeholder="Coin ID (e.g., bitcoin)"
                     value={formData.coinId}
                     onChange={(e) => setFormData({...formData, coinId: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
+                    className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
                   />
                   <Input
                     placeholder="Amount"
@@ -243,7 +258,7 @@ const Portfolio = () => {
                     step="0.00000001"
                     value={formData.amount}
                     onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
+                    className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
                   />
                   <Input
                     placeholder="Avg Price"
@@ -251,19 +266,19 @@ const Portfolio = () => {
                     step="0.01"
                     value={formData.avgPrice}
                     onChange={(e) => setFormData({...formData, avgPrice: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
+                    className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
                   />
                   <Input
                     type="date"
                     value={formData.purchaseDate}
                     onChange={(e) => setFormData({...formData, purchaseDate: e.target.value})}
-                    className="bg-gray-800 border-gray-700 text-white"
+                    className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
                   />
                 </div>
-                <div className="flex gap-4 mt-4">
+                <div className="flex gap-4 mt-6">
                   <Button
                     onClick={editingId ? handleUpdateHolding : handleAddHolding}
-                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
+                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-300 hover:scale-105 transform"
                   >
                     {editingId ? 'Update' : 'Add'} Holding
                   </Button>
@@ -274,7 +289,7 @@ const Portfolio = () => {
                       setEditingId(null);
                       setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '' });
                     }}
-                    className="border-gray-600 text-white hover:bg-gray-800"
+                    className="border-gray-600 text-white hover:bg-gray-800 transition-all duration-300 hover:scale-105 transform"
                   >
                     Cancel
                   </Button>
@@ -284,12 +299,12 @@ const Portfolio = () => {
           )}
 
           {/* Holdings Table */}
-          <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800">
+          <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-xl font-semibold text-white">Your Holdings</CardTitle>
               <Button
                 onClick={() => setShowAddForm(true)}
-                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
+                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-300 hover:scale-105 transform"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Holding
@@ -318,7 +333,7 @@ const Portfolio = () => {
                       const pnlPercentage = cost > 0 ? ((pnl / cost) * 100) : 0;
 
                       return (
-                        <tr key={holding.id} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors">
+                        <tr key={holding.id} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-all duration-300">
                           <td className="py-4">
                             <div>
                               <p className="font-medium text-white">{holding.name}</p>
@@ -341,7 +356,7 @@ const Portfolio = () => {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleEditHolding(holding.id)}
-                                className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                                className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all duration-300 hover:scale-110 transform"
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
@@ -349,7 +364,7 @@ const Portfolio = () => {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleDeleteHolding(holding.id)}
-                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-300 hover:scale-110 transform"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
