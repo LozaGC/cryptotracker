@@ -27,6 +27,31 @@ const Landing = () => {
         </div>
 
         <div className="relative z-10 text-center max-w-6xl mx-auto">
+          {/* Tuffy AI Electric Card */}
+          <div className="mb-12 flex justify-center">
+            <div className="electric-border glass-card-strong p-8 rounded-2xl max-w-md">
+              <div className="flex items-center justify-center space-x-4 mb-4">
+                <div className="w-16 h-16 rounded-xl overflow-hidden shadow-lg shadow-red-400/50 border border-red-500/30">
+                  <img 
+                    src="/lovable-uploads/tuffy.png" 
+                    alt="Tuffy AI" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-red-400 via-yellow-400 to-red-400 bg-clip-text text-transparent">
+                    Tuffy AI
+                  </h2>
+                  <p className="text-gray-300 text-sm">AI-Powered Trading Assistant</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-center space-x-2 text-sm text-gray-400">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span>Online & Ready</span>
+              </div>
+            </div>
+          </div>
+
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-4 mb-6">
               <Sparkles className="w-8 h-8 text-red-400 animate-pulse" />
@@ -50,9 +75,8 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
             <Button
               onClick={() => navigate('/dashboard')}
-              className="group relative overflow-hidden bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-orange-600 text-white border-0 px-8 py-4 text-lg font-semibold rounded-lg shadow-lg transition-all duration-500 hover:shadow-red-500/40 hover:shadow-2xl hover:scale-110 transform"
+              className="btn-futuristic group relative overflow-hidden bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-orange-600 text-white border-0 px-8 py-4 text-lg font-semibold rounded-lg shadow-lg transition-all duration-500 hover:shadow-red-500/40 hover:shadow-2xl hover:scale-110 transform"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-orange-400 opacity-0 group-hover:opacity-30 transition-opacity duration-500"></div>
               <div className="flex items-center space-x-2">
                 <Target className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
                 <span>Launch Dashboard</span>
