@@ -6,6 +6,7 @@ import CryptoList from "@/components/CryptoList";
 import FearGreedIndex from "@/components/FearGreedIndex";
 import SentimentAnalysis from "@/components/SentimentAnalysis";
 import MarketPulse from "@/components/MarketPulse";
+import TradingViewChart from "@/components/TradingViewChart";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Zap, Brain, Target } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -70,11 +71,14 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
             <div className="lg:col-span-2">
               <div className="glass-card rounded-xl border border-red-500/20 shadow-lg shadow-red-500/10 bg-gradient-to-br from-gray-900/50 to-gray-800/30 p-2">
-                <CryptoChart />
+                <TradingViewChart />
               </div>
             </div>
-            <div>
+            <div className="space-y-6">
               <PortfolioCard />
+              <div className="glass-card rounded-xl border border-red-500/20 shadow-lg shadow-red-500/10 bg-gradient-to-br from-gray-900/50 to-gray-800/30 p-2">
+                <CryptoChart />
+              </div>
             </div>
           </div>
           
