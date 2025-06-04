@@ -24,11 +24,50 @@ const usePortfolioHoldings = () => {
   const { user } = useUser();
   const queryClient = useQueryClient();
 
+  // Set up Supabase auth session when Clerk user changes
+  useEffect(() => {
+    const setupSupabaseAuth = async () => {
+      if (user?.id) {
+        // Create a custom JWT token for Supabase with Clerk user ID
+        const customToken = btoa(JSON.stringify({
+          sub: user.id,
+          aud: 'authenticated',
+          role: 'authenticated',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
+        }));
+        
+        // Set the session in Supabase to use the Clerk user ID
+        await supabase.auth.setSession({
+          access_token: customToken,
+          refresh_token: customToken,
+          user: {
+            id: user.id,
+            aud: 'authenticated',
+            role: 'authenticated',
+            email: user.emailAddresses[0]?.emailAddress || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            app_metadata: {},
+            user_metadata: {}
+          }
+        });
+      } else {
+        // Sign out of Supabase when no Clerk user
+        await supabase.auth.signOut();
+      }
+    };
+
+    setupSupabaseAuth();
+  }, [user?.id]);
+
   // Fetch holdings from Supabase
   const { data: holdings = [], isLoading, error } = useQuery({
     queryKey: ['portfolio-holdings', user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated');
+      
+      console.log('Fetching holdings for user:', user.id);
       
       const { data, error } = await supabase
         .from('portfolio_holdings')
@@ -36,7 +75,12 @@ const usePortfolioHoldings = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      console.log('Supabase query result:', { data, error });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
       
       return data.map((holding: PortfolioHolding): Holding => ({
         id: holding.id,
@@ -57,6 +101,8 @@ const usePortfolioHoldings = () => {
     mutationFn: async (holding: Omit<Holding, 'id' | 'currentPrice'>) => {
       if (!user?.id) throw new Error('User not authenticated');
 
+      console.log('Adding holding for user:', user.id, holding);
+
       const insertData: PortfolioHoldingInsert = {
         user_id: user.id,
         symbol: holding.symbol,
@@ -73,7 +119,12 @@ const usePortfolioHoldings = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      console.log('Insert result:', { data, error });
+
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -85,6 +136,8 @@ const usePortfolioHoldings = () => {
   const updateHoldingMutation = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Holding> & { id: string }) => {
       if (!user?.id) throw new Error('User not authenticated');
+
+      console.log('Updating holding:', id, updates);
 
       const updateData: PortfolioHoldingUpdate = {};
       if (updates.symbol) updateData.symbol = updates.symbol;
@@ -102,7 +155,12 @@ const usePortfolioHoldings = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      console.log('Update result:', { data, error });
+
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -115,13 +173,20 @@ const usePortfolioHoldings = () => {
     mutationFn: async (id: string) => {
       if (!user?.id) throw new Error('User not authenticated');
 
+      console.log('Deleting holding:', id);
+
       const { error } = await supabase
         .from('portfolio_holdings')
         .delete()
         .eq('id', id)
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      console.log('Delete result:', { error });
+
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-holdings', user?.id] });
