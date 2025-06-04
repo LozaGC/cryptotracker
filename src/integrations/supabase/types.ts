@@ -9,45 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      portfolio_holdings: {
-        Row: {
-          amount: number
-          avg_price: number
-          coin_id: string
-          created_at: string
-          id: string
-          name: string
-          purchase_date: string
-          symbol: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          avg_price: number
-          coin_id: string
-          created_at?: string
-          id?: string
-          name: string
-          purchase_date?: string
-          symbol: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          avg_price?: number
-          coin_id?: string
-          created_at?: string
-          id?: string
-          name?: string
-          purchase_date?: string
-          symbol?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
