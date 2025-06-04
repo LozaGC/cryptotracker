@@ -10,17 +10,6 @@ import usePortfolioHoldings, { type Holding } from "@/hooks/usePortfolioHoldings
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
-interface Holding {
-  id: string;
-  symbol: string;
-  name: string;
-  amount: number;
-  avgPrice: number;
-  currentPrice: number;
-  purchaseDate: string;
-  coinId: string;
-}
-
 const fetchCoinPrices = async (coinIds: string[]) => {
   if (coinIds.length === 0) return {};
   const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_24hr_change=true`);
