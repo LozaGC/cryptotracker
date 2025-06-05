@@ -1,11 +1,15 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Sparkles } from "lucide-react";
 import Header from "@/components/Header";
 import PortfolioAnalytics from "@/components/PortfolioAnalytics";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface Holding {
   id: string;
@@ -25,29 +29,30 @@ const fetchCoinPrices = async (coinIds: string[]) => {
   return response.json();
 };
 
+const fetchPortfolioHoldings = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('portfolio_holdings')
+    .select('*')
+    .eq('user_id', userId);
+  
+  if (error) throw error;
+  
+  return data.map(holding => ({
+    id: holding.id,
+    symbol: holding.symbol,
+    name: holding.name,
+    amount: holding.amount,
+    avgPrice: holding.avg_price,
+    currentPrice: holding.avg_price, // Will be updated with real-time prices
+    purchaseDate: holding.purchase_date,
+    coinId: holding.coin_id
+  }));
+};
+
 const Portfolio = () => {
-  const [holdings, setHoldings] = useState<Holding[]>([
-    {
-      id: '1',
-      symbol: 'BTC',
-      name: 'Bitcoin',
-      amount: 0.5,
-      avgPrice: 45000,
-      currentPrice: 67000,
-      purchaseDate: '2024-01-15',
-      coinId: 'bitcoin'
-    },
-    {
-      id: '2',
-      symbol: 'ETH',
-      name: 'Ethereum',
-      amount: 2.3,
-      avgPrice: 2800,
-      currentPrice: 3500,
-      purchaseDate: '2024-02-01',
-      coinId: 'ethereum'
-    }
-  ]);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,6 +63,13 @@ const Portfolio = () => {
     avgPrice: '',
     purchaseDate: '',
     coinId: ''
+  });
+
+  // Fetch holdings from Supabase
+  const { data: holdings = [], isLoading } = useQuery({
+    queryKey: ['portfolio-holdings', user?.id],
+    queryFn: () => fetchPortfolioHoldings(user!.id),
+    enabled: !!user?.id
   });
 
   // Fetch real-time prices for holdings
@@ -72,8 +84,109 @@ const Portfolio = () => {
   // Update holdings with real-time prices
   const updatedHoldings = holdings.map(holding => ({
     ...holding,
-    currentPrice: priceData?.[holding.coinId]?.usd || holding.currentPrice
+    currentPrice: priceData?.[holding.coinId]?.usd || holding.avgPrice
   }));
+
+  // Mutations for CRUD operations
+  const addHoldingMutation = useMutation({
+    mutationFn: async (newHolding: Omit<Holding, 'id' | 'currentPrice'>) => {
+      const { data, error } = await supabase
+        .from('portfolio_holdings')
+        .insert({
+          user_id: user!.id,
+          symbol: newHolding.symbol,
+          name: newHolding.name,
+          amount: newHolding.amount,
+          avg_price: newHolding.avgPrice,
+          coin_id: newHolding.coinId,
+          purchase_date: newHolding.purchaseDate || new Date().toISOString().split('T')[0]
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolio-holdings'] });
+      toast({
+        title: "Success",
+        description: "Holding added successfully!",
+      });
+      setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '' });
+      setShowAddForm(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to add holding: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updateHoldingMutation = useMutation({
+    mutationFn: async ({ id, holding }: { id: string, holding: Partial<Holding> }) => {
+      const { data, error } = await supabase
+        .from('portfolio_holdings')
+        .update({
+          symbol: holding.symbol,
+          name: holding.name,
+          amount: holding.amount,
+          avg_price: holding.avgPrice,
+          coin_id: holding.coinId,
+          purchase_date: holding.purchaseDate
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolio-holdings'] });
+      toast({
+        title: "Success",
+        description: "Holding updated successfully!",
+      });
+      setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '' });
+      setShowAddForm(false);
+      setEditingId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update holding: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const deleteHoldingMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('portfolio_holdings')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolio-holdings'] });
+      toast({
+        title: "Success",
+        description: "Holding deleted successfully!",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete holding: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
 
   const totalValue = updatedHoldings.reduce((sum, holding) => sum + (holding.amount * holding.currentPrice), 0);
   const totalCost = updatedHoldings.reduce((sum, holding) => sum + (holding.amount * holding.avgPrice), 0);
@@ -82,19 +195,14 @@ const Portfolio = () => {
 
   const handleAddHolding = () => {
     if (formData.symbol && formData.name && formData.amount && formData.avgPrice) {
-      const newHolding: Holding = {
-        id: Date.now().toString(),
+      addHoldingMutation.mutate({
         symbol: formData.symbol.toUpperCase(),
         name: formData.name,
         amount: parseFloat(formData.amount),
         avgPrice: parseFloat(formData.avgPrice),
-        currentPrice: parseFloat(formData.avgPrice),
         purchaseDate: formData.purchaseDate || new Date().toISOString().split('T')[0],
         coinId: formData.coinId || formData.symbol.toLowerCase()
-      };
-      setHoldings([...holdings, newHolding]);
-      setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '' });
-      setShowAddForm(false);
+      });
     }
   };
 
@@ -116,27 +224,24 @@ const Portfolio = () => {
 
   const handleUpdateHolding = () => {
     if (editingId && formData.symbol && formData.name && formData.amount && formData.avgPrice) {
-      setHoldings(holdings.map(holding => 
-        holding.id === editingId 
-          ? {
-              ...holding,
-              symbol: formData.symbol.toUpperCase(),
-              name: formData.name,
-              amount: parseFloat(formData.amount),
-              avgPrice: parseFloat(formData.avgPrice),
-              purchaseDate: formData.purchaseDate,
-              coinId: formData.coinId || formData.symbol.toLowerCase()
-            }
-          : holding
-      ));
-      setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '' });
-      setShowAddForm(false);
-      setEditingId(null);
+      updateHoldingMutation.mutate({
+        id: editingId,
+        holding: {
+          symbol: formData.symbol.toUpperCase(),
+          name: formData.name,
+          amount: parseFloat(formData.amount),
+          avgPrice: parseFloat(formData.avgPrice),
+          purchaseDate: formData.purchaseDate,
+          coinId: formData.coinId || formData.symbol.toLowerCase()
+        }
+      });
     }
   };
 
   const handleDeleteHolding = (id: string) => {
-    setHoldings(holdings.filter(holding => holding.id !== id));
+    if (confirm('Are you sure you want to delete this holding?')) {
+      deleteHoldingMutation.mutate(id);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -146,6 +251,17 @@ const Portfolio = () => {
       minimumFractionDigits: 2
     }).format(amount);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your portfolio...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -278,9 +394,10 @@ const Portfolio = () => {
                 <div className="flex gap-4 mt-6">
                   <Button
                     onClick={editingId ? handleUpdateHolding : handleAddHolding}
+                    disabled={addHoldingMutation.isPending || updateHoldingMutation.isPending}
                     className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-300 hover:scale-105 transform"
                   >
-                    {editingId ? 'Update' : 'Add'} Holding
+                    {(addHoldingMutation.isPending || updateHoldingMutation.isPending) ? 'Saving...' : (editingId ? 'Update' : 'Add')} Holding
                   </Button>
                   <Button
                     variant="outline"
@@ -364,6 +481,7 @@ const Portfolio = () => {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleDeleteHolding(holding.id)}
+                                disabled={deleteHoldingMutation.isPending}
                                 className="text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-300 hover:scale-110 transform"
                               >
                                 <Trash2 className="w-4 h-4" />
