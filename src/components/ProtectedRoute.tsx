@@ -1,23 +1,23 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const { user, isLoaded } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (isLoaded && !user) {
       navigate('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user, isLoaded, navigate]);
 
-  if (loading) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">

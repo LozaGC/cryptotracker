@@ -2,15 +2,17 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Menu, X, TrendingUp, PieChart, MessageSquare, Palette, LogOut, User } from "lucide-react";
+import { useUser } from '@clerk/clerk-react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user: clerkUser } = useUser();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,14 +34,14 @@ const Header = () => {
   };
 
   const getInitials = () => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name
+    if (clerkUser?.fullName) {
+      return clerkUser.fullName
         .split(' ')
         .map((name: string) => name[0])
         .join('')
         .toUpperCase();
     }
-    return user?.email?.[0]?.toUpperCase() || 'U';
+    return clerkUser?.primaryEmailAddress?.emailAddress?.[0]?.toUpperCase() || 'U';
   };
 
   return (
@@ -95,11 +97,12 @@ const Header = () => {
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
-            {user ? (
+            {clerkUser ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={clerkUser.imageUrl} alt={clerkUser.fullName || 'User'} />
                       <AvatarFallback className="bg-gradient-to-r from-red-500 to-orange-500 text-white">
                         {getInitials()}
                       </AvatarFallback>
@@ -111,10 +114,10 @@ const Header = () => {
                     <User className="w-4 h-4" />
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
-                        {user.user_metadata?.full_name || 'User'}
+                        {clerkUser.fullName || 'User'}
                       </p>
                       <p className="text-xs leading-none text-gray-400">
-                        {user.email}
+                        {clerkUser.primaryEmailAddress?.emailAddress}
                       </p>
                     </div>
                   </DropdownMenuItem>

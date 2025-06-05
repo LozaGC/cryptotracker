@@ -1,14 +1,11 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: any | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -23,66 +20,76 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const { user: clerkUser, isLoaded } = useUser();
+  const { signOut: clerkSignOut } = useClerkAuth();
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    const syncUserToSupabase = async () => {
+      if (isLoaded && clerkUser) {
+        try {
+          // Check if user exists in Supabase profiles table
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', clerkUser.id)
+            .single();
+
+          if (!existingProfile) {
+            // Create user profile in Supabase
+            await supabase
+              .from('profiles')
+              .insert({
+                id: clerkUser.id,
+                email: clerkUser.primaryEmailAddress?.emailAddress,
+                full_name: clerkUser.fullName,
+                avatar_url: clerkUser.imageUrl,
+              });
+          } else {
+            // Update existing profile
+            await supabase
+              .from('profiles')
+              .update({
+                email: clerkUser.primaryEmailAddress?.emailAddress,
+                full_name: clerkUser.fullName,
+                avatar_url: clerkUser.imageUrl,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', clerkUser.id);
+          }
+
+          setUser({
+            id: clerkUser.id,
+            email: clerkUser.primaryEmailAddress?.emailAddress,
+            user_metadata: {
+              full_name: clerkUser.fullName,
+              avatar_url: clerkUser.imageUrl,
+            }
+          });
+        } catch (error) {
+          console.error('Error syncing user to Supabase:', error);
+        }
+      } else if (isLoaded && !clerkUser) {
+        setUser(null);
+      }
+      
+      if (isLoaded) {
         setLoading(false);
       }
-    );
+    };
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const signUp = async (email: string, password: string, fullName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName
-        }
-      }
-    });
-    
-    return { error };
-  };
-
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    
-    return { error };
-  };
+    syncUserToSupabase();
+  }, [clerkUser, isLoaded]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await clerkSignOut();
+    setUser(null);
   };
 
   const value = {
     user,
-    session,
     loading,
-    signUp,
-    signIn,
     signOut
   };
 
