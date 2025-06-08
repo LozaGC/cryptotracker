@@ -26,7 +26,25 @@ export const supabase = createSupabaseClient();
 
 // Function to set the auth token from Clerk
 export const setSupabaseToken = (token: string) => {
-  supabase.functions.setAuth(token);
-  // Update the Authorization header for future requests
-  supabase.rest.headers['Authorization'] = `Bearer ${token}`;
+  // Use the realtime channel to set auth for real-time features
+  if (supabase.realtime) {
+    supabase.realtime.setAuth(token);
+  }
+  
+  // For regular API calls, we'll recreate the client with the new token
+  const clientWithAuth = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+  
+  // Copy the auth client to our main supabase instance
+  Object.assign(supabase, clientWithAuth);
 };
