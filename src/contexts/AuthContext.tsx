@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, setSupabaseToken } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   user: any | null;
@@ -21,7 +21,7 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user: clerkUser, isLoaded } = useUser();
-  const { signOut: clerkSignOut } = useClerkAuth();
+  const { signOut: clerkSignOut, getToken } = useClerkAuth();
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,6 +29,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const syncUserToSupabase = async () => {
       if (isLoaded && clerkUser) {
         try {
+          // Get the Clerk token and set it for Supabase
+          const token = await getToken({ template: "supabase" });
+          if (token) {
+            setSupabaseToken(token);
+          }
+
           // Check if user exists in Supabase profiles table
           const { data: existingProfile } = await supabase
             .from('profiles')
@@ -69,6 +75,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         } catch (error) {
           console.error('Error syncing user to Supabase:', error);
+          // Set user anyway so the app doesn't break
+          setUser({
+            id: clerkUser.id,
+            email: clerkUser.primaryEmailAddress?.emailAddress,
+            user_metadata: {
+              full_name: clerkUser.fullName,
+              avatar_url: clerkUser.imageUrl,
+            }
+          });
         }
       } else if (isLoaded && !clerkUser) {
         setUser(null);
@@ -80,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     syncUserToSupabase();
-  }, [clerkUser, isLoaded]);
+  }, [clerkUser, isLoaded, getToken]);
 
   const signOut = async () => {
     await clerkSignOut();

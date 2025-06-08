@@ -29,14 +29,21 @@ const fetchCoinPrices = async (coinIds: string[]) => {
 };
 
 const fetchPortfolioHoldings = async (userId: string) => {
+  console.log('Fetching holdings for user:', userId);
+  
   const { data, error } = await supabase
     .from('portfolio_holdings')
     .select('*')
     .eq('user_id', userId);
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error fetching holdings:', error);
+    throw error;
+  }
   
-  return data.map(holding => ({
+  console.log('Fetched holdings:', data);
+  
+  return (data || []).map(holding => ({
     id: holding.id,
     symbol: holding.symbol,
     name: holding.name,
@@ -65,11 +72,18 @@ const Portfolio = () => {
   });
 
   // Fetch holdings from Supabase
-  const { data: holdings = [], isLoading } = useQuery({
+  const { data: holdings = [], isLoading, error } = useQuery({
     queryKey: ['portfolio-holdings', user?.id],
     queryFn: () => fetchPortfolioHoldings(user!.id),
     enabled: !!user?.id
   });
+
+  // Log any query errors
+  useEffect(() => {
+    if (error) {
+      console.error('Portfolio query error:', error);
+    }
+  }, [error]);
 
   // Fetch real-time prices for holdings
   const coinIds = holdings.map(h => h.coinId);
@@ -89,6 +103,8 @@ const Portfolio = () => {
   // Mutations for CRUD operations
   const addHoldingMutation = useMutation({
     mutationFn: async (newHolding: Omit<Holding, 'id' | 'currentPrice'>) => {
+      console.log('Adding holding for user:', user!.id, 'holding:', newHolding);
+      
       const { data, error } = await supabase
         .from('portfolio_holdings')
         .insert({
@@ -103,7 +119,11 @@ const Portfolio = () => {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding holding:', error);
+        throw error;
+      }
+      console.log('Successfully added holding:', data);
       return data;
     },
     onSuccess: () => {
@@ -115,7 +135,8 @@ const Portfolio = () => {
       setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '' });
       setShowAddForm(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('Add holding mutation error:', error);
       toast({
         title: "Error",
         description: `Failed to add holding: ${error.message}`,
@@ -137,6 +158,7 @@ const Portfolio = () => {
           purchase_date: holding.purchaseDate
         })
         .eq('id', id)
+        .eq('user_id', user!.id)
         .select()
         .single();
       
@@ -153,7 +175,7 @@ const Portfolio = () => {
       setShowAddForm(false);
       setEditingId(null);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: `Failed to update holding: ${error.message}`,
@@ -167,7 +189,8 @@ const Portfolio = () => {
       const { error } = await supabase
         .from('portfolio_holdings')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user!.id);
       
       if (error) throw error;
     },
@@ -178,7 +201,7 @@ const Portfolio = () => {
         description: "Holding deleted successfully!",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: `Failed to delete holding: ${error.message}`,
