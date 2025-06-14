@@ -14,36 +14,39 @@ export type Database = {
           amount: number
           avg_price: number
           coin_id: string
-          created_at: string
+          created_at: string | null
           id: string
           name: string
+          notes: string | null
           purchase_date: string
           symbol: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           amount: number
           avg_price: number
           coin_id: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           name: string
+          notes?: string | null
           purchase_date?: string
           symbol: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           amount?: number
           avg_price?: number
           coin_id?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           name?: string
+          notes?: string | null
           purchase_date?: string
           symbol?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
