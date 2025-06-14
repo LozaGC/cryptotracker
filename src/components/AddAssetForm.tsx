@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,15 +6,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Plus, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import type { AddAssetRequest, PortfolioEntry } from "@/services/portfolioApiService";
 
 interface AddAssetFormProps {
   onAssetAdded: () => void;
-  onAddAsset: (data: {
-    symbol: string;
-    quantity: number;
-    use_real_time_price: boolean;
-    custom_price?: number;
-  }) => Promise<void>;
+  onAddAsset: (data: AddAssetRequest) => Promise<PortfolioEntry>;
   isLoading: boolean;
 }
 
