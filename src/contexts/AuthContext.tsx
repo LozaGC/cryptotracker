@@ -31,15 +31,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const syncUserToSupabase = async () => {
       if (isLoaded && clerkUser) {
         try {
-          // Get the Clerk token (without template since supabase template doesn't exist)
-          const token = await getToken();
-          console.log('Got Clerk token:', !!token);
+          // Get the Supabase-compatible token using the 'supabase' template
+          const token = await getToken({ template: 'supabase' });
+          console.log('Got Supabase token:', !!token);
           
           if (token) {
             setSupabaseToken(token);
           }
 
-          // Check if user exists in Supabase profiles table
+          // Use the regular supabase client for profile operations (not authenticated operations)
           const { data: existingProfile } = await supabase
             .from('profiles')
             .select('*')
