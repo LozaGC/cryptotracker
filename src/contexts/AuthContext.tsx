@@ -31,34 +31,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const syncUserToSupabase = async () => {
       if (isLoaded && clerkUser) {
         try {
-          // Get the Supabase-compatible token using the 'supabase' template
-          const token = await getToken({ template: 'supabase' });
-          console.log('Got Supabase token:', !!token);
+          console.log('Starting user sync for:', clerkUser.id);
+          
+          // Try to get the Supabase-compatible token
+          let token = null;
+          try {
+            token = await getToken({ template: 'supabase' });
+            console.log('Successfully got Supabase token:', !!token);
+            console.log('Token preview (first 50 chars):', token?.substring(0, 50));
+          } catch (tokenError) {
+            console.error('Failed to get Supabase token:', tokenError);
+            console.log('Falling back to regular Clerk token...');
+            
+            // Fallback to regular token if Supabase template fails
+            try {
+              token = await getToken();
+              console.log('Got fallback Clerk token:', !!token);
+            } catch (fallbackError) {
+              console.error('Failed to get any token:', fallbackError);
+            }
+          }
           
           if (token) {
             setSupabaseToken(token);
+            console.log('Token set in state');
+          } else {
+            console.error('No token available');
           }
 
           // Use the regular supabase client for profile operations (not authenticated operations)
-          const { data: existingProfile } = await supabase
+          const { data: existingProfile, error: fetchError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', clerkUser.id)
             .single();
 
-          if (!existingProfile) {
+          console.log('Profile fetch result:', { existingProfile, fetchError });
+
+          if (!existingProfile && !fetchError) {
+            console.log('Creating new profile...');
             // Create user profile in Supabase
-            await supabase
+            const { data: newProfile, error: insertError } = await supabase
               .from('profiles')
               .insert({
                 id: clerkUser.id,
                 email: clerkUser.primaryEmailAddress?.emailAddress,
                 full_name: clerkUser.fullName,
                 avatar_url: clerkUser.imageUrl,
-              });
-          } else {
+              })
+              .select()
+              .single();
+            
+            console.log('Profile creation result:', { newProfile, insertError });
+          } else if (existingProfile) {
+            console.log('Updating existing profile...');
             // Update existing profile
-            await supabase
+            const { error: updateError } = await supabase
               .from('profiles')
               .update({
                 email: clerkUser.primaryEmailAddress?.emailAddress,
@@ -67,8 +95,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 updated_at: new Date().toISOString(),
               })
               .eq('id', clerkUser.id);
+            
+            console.log('Profile update result:', { updateError });
           }
 
+          // Set user data for the app
           setUser({
             id: clerkUser.id,
             email: clerkUser.primaryEmailAddress?.emailAddress,
@@ -77,6 +108,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               avatar_url: clerkUser.imageUrl,
             }
           });
+          
+          console.log('User sync completed successfully');
         } catch (error) {
           console.error('Error syncing user to Supabase:', error);
           // Set user anyway so the app doesn't break
@@ -88,14 +121,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               avatar_url: clerkUser.imageUrl,
             }
           });
+          console.log('Set user data despite sync error');
         }
       } else if (isLoaded && !clerkUser) {
+        console.log('No user found, clearing state');
         setUser(null);
         setSupabaseToken(null);
       }
       
       if (isLoaded) {
         setLoading(false);
+        console.log('Auth loading completed');
       }
     };
 
@@ -103,9 +139,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [clerkUser, isLoaded, getToken]);
 
   const signOut = async () => {
+    console.log('Signing out...');
     await clerkSignOut();
     setUser(null);
     setSupabaseToken(null);
+    console.log('Sign out completed');
   };
 
   const value = {

@@ -31,6 +31,7 @@ const fetchCoinPrices = async (coinIds: string[]) => {
 
 const fetchPortfolioHoldings = async (userId: string, token: string) => {
   console.log('Fetching holdings for user:', userId);
+  console.log('Using token (first 50 chars):', token?.substring(0, 50));
   
   // Create authenticated Supabase client
   const authedSupabase = createAuthedSupabaseClient(token);
@@ -109,6 +110,7 @@ const Portfolio = () => {
   const addHoldingMutation = useMutation({
     mutationFn: async (newHolding: Omit<Holding, 'id' | 'currentPrice'>) => {
       console.log('Adding holding for user:', user!.id, 'holding:', newHolding);
+      console.log('Using token (first 50 chars):', supabaseToken?.substring(0, 50));
       
       if (!supabaseToken) {
         throw new Error('No authentication token available');
@@ -117,6 +119,7 @@ const Portfolio = () => {
       // Create authenticated Supabase client
       const authedSupabase = createAuthedSupabaseClient(supabaseToken);
       
+      console.log('Attempting to insert holding...');
       const { data, error } = await authedSupabase
         .from('portfolio_holdings')
         .insert({
@@ -132,7 +135,12 @@ const Portfolio = () => {
         .single();
       
       if (error) {
-        console.error('Error adding holding:', error);
+        console.error('Database error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
       console.log('Successfully added holding:', data);
@@ -151,7 +159,7 @@ const Portfolio = () => {
       console.error('Add holding mutation error:', error);
       toast({
         title: "Error",
-        description: `Failed to add holding: ${error.message}`,
+        description: `Failed to add holding: ${error.message || error}`,
         variant: "destructive",
       });
     }
