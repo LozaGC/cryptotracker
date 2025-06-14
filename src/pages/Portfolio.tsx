@@ -1,15 +1,17 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Sparkles } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Sparkles, RefreshCw, Download, Upload } from "lucide-react";
 import Header from "@/components/Header";
 import PortfolioAnalytics from "@/components/PortfolioAnalytics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, createAuthedSupabaseClient } from "@/integrations/supabase/client";
 import { useUser } from '@clerk/clerk-react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { portfolioService, type CreateHoldingData } from "@/services/portfolioService";
 
 interface Holding {
   id: string;
@@ -20,6 +22,7 @@ interface Holding {
   currentPrice: number;
   purchaseDate: string;
   coinId: string;
+  notes?: string;
 }
 
 const fetchCoinPrices = async (coinIds: string[]) => {
@@ -29,40 +32,9 @@ const fetchCoinPrices = async (coinIds: string[]) => {
   return response.json();
 };
 
-const fetchPortfolioHoldings = async (userId: string, token: string) => {
-  console.log('Fetching holdings for user:', userId);
-  console.log('Using token (first 50 chars):', token?.substring(0, 50));
-  
-  // Create authenticated Supabase client
-  const authedSupabase = createAuthedSupabaseClient(token);
-  
-  const { data, error } = await authedSupabase
-    .from('portfolio_holdings')
-    .select('*')
-    .eq('user_id', userId);
-  
-  if (error) {
-    console.error('Error fetching holdings:', error);
-    throw error;
-  }
-  
-  console.log('Fetched holdings:', data);
-  
-  return (data || []).map(holding => ({
-    id: holding.id,
-    symbol: holding.symbol,
-    name: holding.name,
-    amount: holding.amount,
-    avgPrice: holding.avg_price,
-    currentPrice: holding.avg_price, // Will be updated with real-time prices
-    purchaseDate: holding.purchase_date,
-    coinId: holding.coin_id
-  }));
-};
-
 const Portfolio = () => {
   const { user } = useUser();
-  const { supabaseToken } = useAuth();
+  const { supabaseToken, refreshToken } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -74,22 +46,34 @@ const Portfolio = () => {
     amount: '',
     avgPrice: '',
     purchaseDate: '',
-    coinId: ''
+    coinId: '',
+    notes: ''
   });
 
   // Fetch holdings from Supabase
-  const { data: holdings = [], isLoading, error } = useQuery({
+  const { data: holdings = [], isLoading, error, refetch } = useQuery({
     queryKey: ['portfolio-holdings', user?.id],
-    queryFn: () => fetchPortfolioHoldings(user!.id, supabaseToken!),
-    enabled: !!user?.id && !!supabaseToken
+    queryFn: async () => {
+      if (!user?.id || !supabaseToken) {
+        throw new Error('User not authenticated');
+      }
+      return portfolioService.fetchHoldings(user.id, supabaseToken, refreshToken);
+    },
+    enabled: !!user?.id && !!supabaseToken,
+    refetchInterval: 60000, // Refetch every minute
   });
 
   // Log any query errors
   useEffect(() => {
     if (error) {
       console.error('Portfolio query error:', error);
+      toast({
+        title: "Error loading portfolio",
+        description: "Failed to load your holdings. Please try refreshing.",
+        variant: "destructive",
+      });
     }
-  }, [error]);
+  }, [error, toast]);
 
   // Fetch real-time prices for holdings
   const coinIds = holdings.map(h => h.coinId);
@@ -108,43 +92,11 @@ const Portfolio = () => {
 
   // Mutations for CRUD operations
   const addHoldingMutation = useMutation({
-    mutationFn: async (newHolding: Omit<Holding, 'id' | 'currentPrice'>) => {
-      console.log('Adding holding for user:', user!.id, 'holding:', newHolding);
-      console.log('Using token (first 50 chars):', supabaseToken?.substring(0, 50));
-      
-      if (!supabaseToken) {
-        throw new Error('No authentication token available');
+    mutationFn: async (newHolding: CreateHoldingData) => {
+      if (!user?.id || !supabaseToken) {
+        throw new Error('User not authenticated');
       }
-      
-      // Create authenticated Supabase client
-      const authedSupabase = createAuthedSupabaseClient(supabaseToken);
-      
-      console.log('Attempting to insert holding...');
-      const { data, error } = await authedSupabase
-        .from('portfolio_holdings')
-        .insert({
-          user_id: user!.id,
-          symbol: newHolding.symbol,
-          name: newHolding.name,
-          amount: newHolding.amount,
-          avg_price: newHolding.avgPrice,
-          coin_id: newHolding.coinId,
-          purchase_date: newHolding.purchaseDate || new Date().toISOString().split('T')[0]
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Database error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        throw error;
-      }
-      console.log('Successfully added holding:', data);
-      return data;
+      return portfolioService.createHolding(user.id, supabaseToken, refreshToken, newHolding);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-holdings'] });
@@ -152,8 +104,7 @@ const Portfolio = () => {
         title: "Success",
         description: "Holding added successfully!",
       });
-      setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '' });
-      setShowAddForm(false);
+      resetForm();
     },
     onError: (error: any) => {
       console.error('Add holding mutation error:', error);
@@ -166,31 +117,11 @@ const Portfolio = () => {
   });
 
   const updateHoldingMutation = useMutation({
-    mutationFn: async ({ id, holding }: { id: string, holding: Partial<Holding> }) => {
-      if (!supabaseToken) {
-        throw new Error('No authentication token available');
+    mutationFn: async ({ id, holding }: { id: string, holding: Partial<CreateHoldingData> }) => {
+      if (!user?.id || !supabaseToken) {
+        throw new Error('User not authenticated');
       }
-      
-      // Create authenticated Supabase client
-      const authedSupabase = createAuthedSupabaseClient(supabaseToken);
-      
-      const { data, error } = await authedSupabase
-        .from('portfolio_holdings')
-        .update({
-          symbol: holding.symbol,
-          name: holding.name,
-          amount: holding.amount,
-          avg_price: holding.avgPrice,
-          coin_id: holding.coinId,
-          purchase_date: holding.purchaseDate
-        })
-        .eq('id', id)
-        .eq('user_id', user!.id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      return portfolioService.updateHolding(user.id, supabaseToken, refreshToken, id, holding);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-holdings'] });
@@ -198,9 +129,7 @@ const Portfolio = () => {
         title: "Success",
         description: "Holding updated successfully!",
       });
-      setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '' });
-      setShowAddForm(false);
-      setEditingId(null);
+      resetForm();
     },
     onError: (error: any) => {
       toast({
@@ -213,20 +142,10 @@ const Portfolio = () => {
 
   const deleteHoldingMutation = useMutation({
     mutationFn: async (id: string) => {
-      if (!supabaseToken) {
-        throw new Error('No authentication token available');
+      if (!user?.id || !supabaseToken) {
+        throw new Error('User not authenticated');
       }
-      
-      // Create authenticated Supabase client
-      const authedSupabase = createAuthedSupabaseClient(supabaseToken);
-      
-      const { error } = await authedSupabase
-        .from('portfolio_holdings')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user!.id);
-      
-      if (error) throw error;
+      return portfolioService.deleteHolding(user.id, supabaseToken, refreshToken, id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-holdings'] });
@@ -249,6 +168,12 @@ const Portfolio = () => {
   const totalPnL = totalValue - totalCost;
   const totalPnLPercentage = totalCost > 0 ? ((totalPnL / totalCost) * 100) : 0;
 
+  const resetForm = () => {
+    setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '', notes: '' });
+    setShowAddForm(false);
+    setEditingId(null);
+  };
+
   const handleAddHolding = () => {
     if (formData.symbol && formData.name && formData.amount && formData.avgPrice) {
       addHoldingMutation.mutate({
@@ -257,7 +182,8 @@ const Portfolio = () => {
         amount: parseFloat(formData.amount),
         avgPrice: parseFloat(formData.avgPrice),
         purchaseDate: formData.purchaseDate || new Date().toISOString().split('T')[0],
-        coinId: formData.coinId || formData.symbol.toLowerCase()
+        coinId: formData.coinId || formData.symbol.toLowerCase(),
+        notes: formData.notes
       });
     }
   };
@@ -271,7 +197,8 @@ const Portfolio = () => {
         amount: holding.amount.toString(),
         avgPrice: holding.avgPrice.toString(),
         purchaseDate: holding.purchaseDate,
-        coinId: holding.coinId
+        coinId: holding.coinId,
+        notes: holding.notes || ''
       });
       setEditingId(id);
       setShowAddForm(true);
@@ -288,7 +215,8 @@ const Portfolio = () => {
           amount: parseFloat(formData.amount),
           avgPrice: parseFloat(formData.avgPrice),
           purchaseDate: formData.purchaseDate,
-          coinId: formData.coinId || formData.symbol.toLowerCase()
+          coinId: formData.coinId || formData.symbol.toLowerCase(),
+          notes: formData.notes
         }
       });
     }
@@ -298,6 +226,15 @@ const Portfolio = () => {
     if (confirm('Are you sure you want to delete this holding?')) {
       deleteHoldingMutation.mutate(id);
     }
+  };
+
+  const handleRefresh = () => {
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ['portfolio-prices'] });
+    toast({
+      title: "Refreshed",
+      description: "Portfolio data has been refreshed",
+    });
   };
 
   const formatCurrency = (amount: number) => {
@@ -340,7 +277,12 @@ const Portfolio = () => {
               <Sparkles className="w-8 h-8 text-orange-400 animate-pulse" />
             </div>
             <div className="h-1 w-48 bg-gradient-to-r from-red-500 to-orange-400 mx-auto mb-4"></div>
-            <p className="text-xl text-gray-400">Advanced Portfolio Tracking & Analytics for Professional Traders</p>
+            <p className="text-xl text-gray-400">Professional Investment Portfolio Tracking</p>
+            {user && (
+              <p className="text-sm text-gray-500 mt-2">
+                Portfolio for: {user.primaryEmailAddress?.emailAddress}
+              </p>
+            )}
           </header>
 
           {/* Enhanced Portfolio Overview */}
@@ -361,11 +303,12 @@ const Portfolio = () => {
 
             <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-orange-500/30 transition-all duration-300 hover:scale-105 transform">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-400">Total Cost</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-400">Total Investment</CardTitle>
                 <BarChart3 className="h-5 w-5 text-blue-500 group-hover:scale-110 transition-transform duration-300" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">{formatCurrency(totalCost)}</div>
+                <p className="text-xs text-gray-400">Initial Cost Basis</p>
               </CardContent>
             </Card>
 
@@ -378,6 +321,7 @@ const Portfolio = () => {
                 <div className={`text-2xl font-bold ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                   {formatCurrency(totalPnL)}
                 </div>
+                <p className="text-xs text-gray-400">Unrealized Gains/Losses</p>
               </CardContent>
             </Card>
 
@@ -388,13 +332,32 @@ const Portfolio = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">{holdings.length}</div>
-                <p className="text-xs text-gray-400">Assets</p>
+                <p className="text-xs text-gray-400">Unique Assets</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Portfolio Analytics */}
           <PortfolioAnalytics holdings={updatedHoldings} />
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-4 mb-6">
+            <Button
+              onClick={() => setShowAddForm(true)}
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-300 hover:scale-105 transform"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Holding
+            </Button>
+            <Button
+              onClick={handleRefresh}
+              variant="outline"
+              className="border-gray-600 text-white hover:bg-gray-800 transition-all duration-300 hover:scale-105 transform"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh Data
+            </Button>
+          </div>
 
           {/* Add/Edit Form */}
           {showAddForm && (
@@ -405,7 +368,7 @@ const Portfolio = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <Input
                     placeholder="Symbol (e.g., BTC)"
                     value={formData.symbol}
@@ -424,6 +387,8 @@ const Portfolio = () => {
                     onChange={(e) => setFormData({...formData, coinId: e.target.value})}
                     className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
                   />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <Input
                     placeholder="Amount"
                     type="number"
@@ -433,7 +398,7 @@ const Portfolio = () => {
                     className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
                   />
                   <Input
-                    placeholder="Avg Price"
+                    placeholder="Average Price (USD)"
                     type="number"
                     step="0.01"
                     value={formData.avgPrice}
@@ -447,7 +412,14 @@ const Portfolio = () => {
                     className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
                   />
                 </div>
-                <div className="flex gap-4 mt-6">
+                <Textarea
+                  placeholder="Notes (optional)"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300 mb-4"
+                  rows={3}
+                />
+                <div className="flex gap-4">
                   <Button
                     onClick={editingId ? handleUpdateHolding : handleAddHolding}
                     disabled={addHoldingMutation.isPending || updateHoldingMutation.isPending}
@@ -457,11 +429,7 @@ const Portfolio = () => {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setShowAddForm(false);
-                      setEditingId(null);
-                      setFormData({ symbol: '', name: '', amount: '', avgPrice: '', purchaseDate: '', coinId: '' });
-                    }}
+                    onClick={resetForm}
                     className="border-gray-600 text-white hover:bg-gray-800 transition-all duration-300 hover:scale-105 transform"
                   >
                     Cancel
@@ -474,82 +442,98 @@ const Portfolio = () => {
           {/* Holdings Table */}
           <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xl font-semibold text-white">Your Holdings</CardTitle>
-              <Button
-                onClick={() => setShowAddForm(true)}
-                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-300 hover:scale-105 transform"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Holding
-              </Button>
+              <CardTitle className="text-xl font-semibold text-white">Investment Holdings</CardTitle>
+              <div className="text-sm text-gray-400">
+                Last updated: {new Date().toLocaleTimeString()}
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-left text-sm text-gray-400 border-b border-gray-800">
-                      <th className="pb-4">Asset</th>
-                      <th className="pb-4">Amount</th>
-                      <th className="pb-4">Avg Price</th>
-                      <th className="pb-4">Current Price</th>
-                      <th className="pb-4">Value</th>
-                      <th className="pb-4">P&L</th>
-                      <th className="pb-4">P&L %</th>
-                      <th className="pb-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {updatedHoldings.map((holding) => {
-                      const value = holding.amount * holding.currentPrice;
-                      const cost = holding.amount * holding.avgPrice;
-                      const pnl = value - cost;
-                      const pnlPercentage = cost > 0 ? ((pnl / cost) * 100) : 0;
+              {holdings.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-400 mb-4">No holdings found. Start building your portfolio!</p>
+                  <Button
+                    onClick={() => setShowAddForm(true)}
+                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Your First Holding
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-sm text-gray-400 border-b border-gray-800">
+                        <th className="pb-4">Asset</th>
+                        <th className="pb-4">Amount</th>
+                        <th className="pb-4">Avg Price</th>
+                        <th className="pb-4">Current Price</th>
+                        <th className="pb-4">Market Value</th>
+                        <th className="pb-4">P&L</th>
+                        <th className="pb-4">P&L %</th>
+                        <th className="pb-4">Purchase Date</th>
+                        <th className="pb-4">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {updatedHoldings.map((holding) => {
+                        const value = holding.amount * holding.currentPrice;
+                        const cost = holding.amount * holding.avgPrice;
+                        const pnl = value - cost;
+                        const pnlPercentage = cost > 0 ? ((pnl / cost) * 100) : 0;
 
-                      return (
-                        <tr key={holding.id} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-all duration-300">
-                          <td className="py-4">
-                            <div>
-                              <p className="font-medium text-white">{holding.name}</p>
-                              <p className="text-sm text-gray-400">{holding.symbol}</p>
-                            </div>
-                          </td>
-                          <td className="py-4 text-white">{holding.amount.toFixed(8)}</td>
-                          <td className="py-4 text-white">{formatCurrency(holding.avgPrice)}</td>
-                          <td className="py-4 text-white">{formatCurrency(holding.currentPrice)}</td>
-                          <td className="py-4 text-white font-medium">{formatCurrency(value)}</td>
-                          <td className={`py-4 font-medium ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {formatCurrency(pnl)}
-                          </td>
-                          <td className={`py-4 font-medium ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {pnlPercentage.toFixed(2)}%
-                          </td>
-                          <td className="py-4">
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleEditHolding(holding.id)}
-                                className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all duration-300 hover:scale-110 transform"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDeleteHolding(holding.id)}
-                                disabled={deleteHoldingMutation.isPending}
-                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-300 hover:scale-110 transform"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                        return (
+                          <tr key={holding.id} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-all duration-300">
+                            <td className="py-4">
+                              <div>
+                                <p className="font-medium text-white">{holding.name}</p>
+                                <p className="text-sm text-gray-400">{holding.symbol}</p>
+                                {holding.notes && (
+                                  <p className="text-xs text-gray-500 mt-1">{holding.notes.substring(0, 30)}{holding.notes.length > 30 ? '...' : ''}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4 text-white">{holding.amount.toFixed(8)}</td>
+                            <td className="py-4 text-white">{formatCurrency(holding.avgPrice)}</td>
+                            <td className="py-4 text-white">{formatCurrency(holding.currentPrice)}</td>
+                            <td className="py-4 text-white font-medium">{formatCurrency(value)}</td>
+                            <td className={`py-4 font-medium ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {formatCurrency(pnl)}
+                            </td>
+                            <td className={`py-4 font-medium ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {pnlPercentage.toFixed(2)}%
+                            </td>
+                            <td className="py-4 text-gray-400 text-sm">
+                              {new Date(holding.purchaseDate).toLocaleDateString()}
+                            </td>
+                            <td className="py-4">
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditHolding(holding.id)}
+                                  className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all duration-300 hover:scale-110 transform"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteHolding(holding.id)}
+                                  disabled={deleteHoldingMutation.isPending}
+                                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-300 hover:scale-110 transform"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -8,6 +8,7 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   supabaseToken: string | null;
+  refreshToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,39 +28,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
 
+  const refreshToken = useCallback(async (): Promise<string | null> => {
+    if (!clerkUser) return null;
+    
+    try {
+      console.log('Refreshing Supabase token...');
+      const token = await getToken({ template: 'supabase' });
+      console.log('Token refreshed successfully:', !!token);
+      
+      if (token) {
+        setSupabaseToken(token);
+        return token;
+      }
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+    }
+    
+    return null;
+  }, [clerkUser, getToken]);
+
   useEffect(() => {
     const syncUserToSupabase = async () => {
       if (isLoaded && clerkUser) {
         try {
           console.log('Starting user sync for:', clerkUser.id);
+          console.log('User email:', clerkUser.primaryEmailAddress?.emailAddress);
           
-          // Try to get the Supabase-compatible token
-          let token = null;
-          try {
-            token = await getToken({ template: 'supabase' });
-            console.log('Successfully got Supabase token:', !!token);
-            console.log('Token preview (first 50 chars):', token?.substring(0, 50));
-          } catch (tokenError) {
-            console.error('Failed to get Supabase token:', tokenError);
-            console.log('Falling back to regular Clerk token...');
-            
-            // Fallback to regular token if Supabase template fails
-            try {
-              token = await getToken();
-              console.log('Got fallback Clerk token:', !!token);
-            } catch (fallbackError) {
-              console.error('Failed to get any token:', fallbackError);
-            }
-          }
+          // Get fresh token
+          const token = await refreshToken();
           
-          if (token) {
-            setSupabaseToken(token);
-            console.log('Token set in state');
-          } else {
-            console.error('No token available');
+          if (!token) {
+            console.error('No token available for database operations');
+            return;
           }
 
-          // Use the regular supabase client for profile operations (not authenticated operations)
+          // Use the regular supabase client for profile operations
           const { data: existingProfile, error: fetchError } = await supabase
             .from('profiles')
             .select('*')
@@ -68,9 +71,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           console.log('Profile fetch result:', { existingProfile, fetchError });
 
-          if (!existingProfile && !fetchError) {
+          if (!existingProfile && fetchError?.code === 'PGRST116') {
             console.log('Creating new profile...');
-            // Create user profile in Supabase
             const { data: newProfile, error: insertError } = await supabase
               .from('profiles')
               .insert({
@@ -85,7 +87,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('Profile creation result:', { newProfile, insertError });
           } else if (existingProfile) {
             console.log('Updating existing profile...');
-            // Update existing profile
             const { error: updateError } = await supabase
               .from('profiles')
               .update({
@@ -121,7 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               avatar_url: clerkUser.imageUrl,
             }
           });
-          console.log('Set user data despite sync error');
         }
       } else if (isLoaded && !clerkUser) {
         console.log('No user found, clearing state');
@@ -136,7 +136,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     syncUserToSupabase();
-  }, [clerkUser, isLoaded, getToken]);
+  }, [clerkUser, isLoaded, refreshToken]);
+
+  // Set up automatic token refresh every 45 minutes
+  useEffect(() => {
+    if (!clerkUser) return;
+
+    const interval = setInterval(() => {
+      console.log('Automatic token refresh triggered');
+      refreshToken();
+    }, 45 * 60 * 1000); // 45 minutes
+
+    return () => clearInterval(interval);
+  }, [clerkUser, refreshToken]);
 
   const signOut = async () => {
     console.log('Signing out...');
@@ -150,7 +162,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     loading,
     signOut,
-    supabaseToken
+    supabaseToken,
+    refreshToken
   };
 
   return (
