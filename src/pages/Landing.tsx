@@ -11,8 +11,8 @@ const Landing = () => {
     <div className="min-h-screen bg-black text-white overflow-hidden">
       <Header />
       
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center px-8">
+      {/* Hero Section - Fixed padding to account for header */}
+      <section className="relative min-h-screen flex items-center justify-center px-8 pt-20">
         {/* Enhanced Animated Background */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-red-500/10 rounded-full blur-3xl animate-pulse"></div>
