@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Sparkles, RefreshCw, Download, Upload } from "lucide-react";
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Sparkles, RefreshCw, User, Mail } from "lucide-react";
 import Header from "@/components/Header";
 import PortfolioAnalytics from "@/components/PortfolioAnalytics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -34,7 +33,7 @@ const fetchCoinPrices = async (coinIds: string[]) => {
 
 const Portfolio = () => {
   const { user } = useUser();
-  const { supabaseToken, refreshToken } = useAuth();
+  const { refreshToken } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -54,12 +53,12 @@ const Portfolio = () => {
   const { data: holdings = [], isLoading, error, refetch } = useQuery({
     queryKey: ['portfolio-holdings', user?.id],
     queryFn: async () => {
-      if (!user?.id || !supabaseToken) {
+      if (!user?.id) {
         throw new Error('User not authenticated');
       }
-      return portfolioService.fetchHoldings(user.id, supabaseToken, refreshToken);
+      return portfolioService.fetchHoldings(user.id, refreshToken);
     },
-    enabled: !!user?.id && !!supabaseToken,
+    enabled: !!user?.id,
     refetchInterval: 60000, // Refetch every minute
   });
 
@@ -93,10 +92,10 @@ const Portfolio = () => {
   // Mutations for CRUD operations
   const addHoldingMutation = useMutation({
     mutationFn: async (newHolding: CreateHoldingData) => {
-      if (!user?.id || !supabaseToken) {
+      if (!user?.id) {
         throw new Error('User not authenticated');
       }
-      return portfolioService.createHolding(user.id, supabaseToken, refreshToken, newHolding);
+      return portfolioService.createHolding(user.id, refreshToken, newHolding);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-holdings'] });
@@ -118,10 +117,10 @@ const Portfolio = () => {
 
   const updateHoldingMutation = useMutation({
     mutationFn: async ({ id, holding }: { id: string, holding: Partial<CreateHoldingData> }) => {
-      if (!user?.id || !supabaseToken) {
+      if (!user?.id) {
         throw new Error('User not authenticated');
       }
-      return portfolioService.updateHolding(user.id, supabaseToken, refreshToken, id, holding);
+      return portfolioService.updateHolding(user.id, refreshToken, id, holding);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-holdings'] });
@@ -142,10 +141,10 @@ const Portfolio = () => {
 
   const deleteHoldingMutation = useMutation({
     mutationFn: async (id: string) => {
-      if (!user?.id || !supabaseToken) {
+      if (!user?.id) {
         throw new Error('User not authenticated');
       }
-      return portfolioService.deleteHolding(user.id, supabaseToken, refreshToken, id);
+      return portfolioService.deleteHolding(user.id, refreshToken, id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-holdings'] });
@@ -279,9 +278,16 @@ const Portfolio = () => {
             <div className="h-1 w-48 bg-gradient-to-r from-red-500 to-orange-400 mx-auto mb-4"></div>
             <p className="text-xl text-gray-400">Professional Investment Portfolio Tracking</p>
             {user && (
-              <p className="text-sm text-gray-500 mt-2">
-                Portfolio for: {user.primaryEmailAddress?.emailAddress}
-              </p>
+              <div className="flex items-center justify-center gap-2 mt-4 text-sm text-gray-300">
+                <div className="flex items-center gap-2 bg-gray-800/50 px-4 py-2 rounded-lg border border-gray-700">
+                  <User className="w-4 h-4 text-blue-400" />
+                  <span className="text-gray-400">Portfolio Owner:</span>
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-green-400" />
+                    <span className="text-white font-medium">{user.primaryEmailAddress?.emailAddress}</span>
+                  </div>
+                </div>
+              </div>
             )}
           </header>
 

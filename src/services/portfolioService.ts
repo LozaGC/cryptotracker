@@ -24,23 +24,19 @@ export interface CreateHoldingData {
 }
 
 export class PortfolioService {
-  private async getAuthedClient(token: string, refreshToken: () => Promise<string | null>) {
-    try {
-      return createAuthedSupabaseClient(token);
-    } catch (error) {
-      console.log('Token might be expired, refreshing...');
-      const newToken = await refreshToken();
-      if (!newToken) {
-        throw new Error('Failed to refresh authentication token');
-      }
-      return createAuthedSupabaseClient(newToken);
+  private async getAuthedClient(getValidToken: () => Promise<string | null>) {
+    const token = await getValidToken();
+    if (!token) {
+      throw new Error('Failed to get valid authentication token');
     }
+    console.log('Using token for Supabase client');
+    return createAuthedSupabaseClient(token);
   }
 
-  async fetchHoldings(userId: string, token: string, refreshToken: () => Promise<string | null>): Promise<PortfolioHolding[]> {
+  async fetchHoldings(userId: string, getValidToken: () => Promise<string | null>): Promise<PortfolioHolding[]> {
     console.log('Fetching holdings for user:', userId);
     
-    const authedSupabase = await this.getAuthedClient(token, refreshToken);
+    const authedSupabase = await this.getAuthedClient(getValidToken);
     
     const { data, error } = await authedSupabase
       .from('portfolio_holdings')
@@ -70,13 +66,12 @@ export class PortfolioService {
 
   async createHolding(
     userId: string, 
-    token: string, 
-    refreshToken: () => Promise<string | null>,
+    getValidToken: () => Promise<string | null>,
     holdingData: CreateHoldingData
   ) {
     console.log('Creating holding for user:', userId, 'holding:', holdingData);
     
-    const authedSupabase = await this.getAuthedClient(token, refreshToken);
+    const authedSupabase = await this.getAuthedClient(getValidToken);
     
     const { data, error } = await authedSupabase
       .from('portfolio_holdings')
@@ -104,14 +99,13 @@ export class PortfolioService {
 
   async updateHolding(
     userId: string,
-    token: string,
-    refreshToken: () => Promise<string | null>,
+    getValidToken: () => Promise<string | null>,
     holdingId: string,
     updateData: Partial<CreateHoldingData>
   ) {
     console.log('Updating holding:', holdingId, 'with data:', updateData);
     
-    const authedSupabase = await this.getAuthedClient(token, refreshToken);
+    const authedSupabase = await this.getAuthedClient(getValidToken);
     
     const updatePayload: any = {};
     if (updateData.symbol) updatePayload.symbol = updateData.symbol;
@@ -141,13 +135,12 @@ export class PortfolioService {
 
   async deleteHolding(
     userId: string,
-    token: string,
-    refreshToken: () => Promise<string | null>,
+    getValidToken: () => Promise<string | null>,
     holdingId: string
   ) {
     console.log('Deleting holding:', holdingId);
     
-    const authedSupabase = await this.getAuthedClient(token, refreshToken);
+    const authedSupabase = await this.getAuthedClient(getValidToken);
     
     const { error } = await authedSupabase
       .from('portfolio_holdings')

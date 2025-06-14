@@ -29,23 +29,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
 
   const refreshToken = useCallback(async (): Promise<string | null> => {
-    if (!clerkUser) return null;
+    if (!clerkUser) {
+      console.log('No user available for token refresh');
+      return null;
+    }
     
     try {
       console.log('Refreshing Supabase token...');
-      const token = await getToken({ template: 'supabase' });
+      // Force a fresh token by not passing any cached token
+      const token = await getToken({ template: 'supabase', skipCache: true });
       console.log('Token refreshed successfully:', !!token);
       
       if (token) {
         setSupabaseToken(token);
         return token;
+      } else {
+        console.error('No token returned from getToken');
       }
     } catch (error) {
       console.error('Failed to refresh token:', error);
+      // Clear the expired token
+      setSupabaseToken(null);
     }
     
     return null;
   }, [clerkUser, getToken]);
+
+  // Check if token is expired (basic JWT parsing)
+  const isTokenExpired = useCallback((token: string): boolean => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp < currentTime;
+    } catch (error) {
+      console.error('Error parsing token:', error);
+      return true; // Consider invalid tokens as expired
+    }
+  }, []);
+
+  // Get a valid token, refreshing if necessary
+  const getValidToken = useCallback(async (): Promise<string | null> => {
+    if (!supabaseToken || isTokenExpired(supabaseToken)) {
+      console.log('Token is expired or missing, refreshing...');
+      return await refreshToken();
+    }
+    return supabaseToken;
+  }, [supabaseToken, isTokenExpired, refreshToken]);
 
   useEffect(() => {
     const syncUserToSupabase = async () => {
@@ -163,7 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     signOut,
     supabaseToken,
-    refreshToken
+    refreshToken: getValidToken // Export the improved token getter
   };
 
   return (
