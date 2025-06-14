@@ -6,8 +6,9 @@ import { Plus, Edit, Trash2, TrendingUp, TrendingDown, PieChart, BarChart3, Doll
 import Header from "@/components/Header";
 import PortfolioAnalytics from "@/components/PortfolioAnalytics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, createAuthedSupabaseClient } from "@/integrations/supabase/client";
 import { useUser } from '@clerk/clerk-react';
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 interface Holding {
@@ -28,10 +29,13 @@ const fetchCoinPrices = async (coinIds: string[]) => {
   return response.json();
 };
 
-const fetchPortfolioHoldings = async (userId: string) => {
+const fetchPortfolioHoldings = async (userId: string, token: string) => {
   console.log('Fetching holdings for user:', userId);
   
-  const { data, error } = await supabase
+  // Create authenticated Supabase client
+  const authedSupabase = createAuthedSupabaseClient(token);
+  
+  const { data, error } = await authedSupabase
     .from('portfolio_holdings')
     .select('*')
     .eq('user_id', userId);
@@ -57,6 +61,7 @@ const fetchPortfolioHoldings = async (userId: string) => {
 
 const Portfolio = () => {
   const { user } = useUser();
+  const { supabaseToken } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -74,8 +79,8 @@ const Portfolio = () => {
   // Fetch holdings from Supabase
   const { data: holdings = [], isLoading, error } = useQuery({
     queryKey: ['portfolio-holdings', user?.id],
-    queryFn: () => fetchPortfolioHoldings(user!.id),
-    enabled: !!user?.id
+    queryFn: () => fetchPortfolioHoldings(user!.id, supabaseToken!),
+    enabled: !!user?.id && !!supabaseToken
   });
 
   // Log any query errors
@@ -105,7 +110,14 @@ const Portfolio = () => {
     mutationFn: async (newHolding: Omit<Holding, 'id' | 'currentPrice'>) => {
       console.log('Adding holding for user:', user!.id, 'holding:', newHolding);
       
-      const { data, error } = await supabase
+      if (!supabaseToken) {
+        throw new Error('No authentication token available');
+      }
+      
+      // Create authenticated Supabase client
+      const authedSupabase = createAuthedSupabaseClient(supabaseToken);
+      
+      const { data, error } = await authedSupabase
         .from('portfolio_holdings')
         .insert({
           user_id: user!.id,
@@ -147,7 +159,14 @@ const Portfolio = () => {
 
   const updateHoldingMutation = useMutation({
     mutationFn: async ({ id, holding }: { id: string, holding: Partial<Holding> }) => {
-      const { data, error } = await supabase
+      if (!supabaseToken) {
+        throw new Error('No authentication token available');
+      }
+      
+      // Create authenticated Supabase client
+      const authedSupabase = createAuthedSupabaseClient(supabaseToken);
+      
+      const { data, error } = await authedSupabase
         .from('portfolio_holdings')
         .update({
           symbol: holding.symbol,
@@ -186,7 +205,14 @@ const Portfolio = () => {
 
   const deleteHoldingMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      if (!supabaseToken) {
+        throw new Error('No authentication token available');
+      }
+      
+      // Create authenticated Supabase client
+      const authedSupabase = createAuthedSupabaseClient(supabaseToken);
+      
+      const { error } = await authedSupabase
         .from('portfolio_holdings')
         .delete()
         .eq('id', id)

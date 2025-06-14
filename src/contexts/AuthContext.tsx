@@ -1,12 +1,13 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { supabase, setSupabaseToken } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   user: any | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  supabaseToken: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,13 +25,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { signOut: clerkSignOut, getToken } = useClerkAuth();
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
 
   useEffect(() => {
     const syncUserToSupabase = async () => {
       if (isLoaded && clerkUser) {
         try {
-          // Get the Clerk token and set it for Supabase
-          const token = await getToken({ template: "supabase" });
+          // Get the Clerk token (without template since supabase template doesn't exist)
+          const token = await getToken();
+          console.log('Got Clerk token:', !!token);
+          
           if (token) {
             setSupabaseToken(token);
           }
@@ -87,6 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else if (isLoaded && !clerkUser) {
         setUser(null);
+        setSupabaseToken(null);
       }
       
       if (isLoaded) {
@@ -100,12 +105,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     await clerkSignOut();
     setUser(null);
+    setSupabaseToken(null);
   };
 
   const value = {
     user,
     loading,
-    signOut
+    signOut,
+    supabaseToken
   };
 
   return (

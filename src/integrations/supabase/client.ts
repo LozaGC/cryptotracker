@@ -6,33 +6,18 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://thoscfdddjqrqpwbghxk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRob3NjZmRkZGpxcnFwd2JnaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5MTE1MDYsImV4cCI6MjA2NDQ4NzUwNn0.tlthVoSBpXokubluGE-MwtCiP5D1NVuqSOmyYu_gmzQ";
 
-// Create Supabase client with proper Clerk integration
-const createSupabaseClient = () => {
+// Create a single Supabase client instance
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
+});
+
+// Function to create a new client with Clerk token
+export const createAuthedSupabaseClient = (token: string) => {
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-      },
-    },
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
-};
-
-export const supabase = createSupabaseClient();
-
-// Function to set the auth token from Clerk
-export const setSupabaseToken = (token: string) => {
-  // Use the realtime channel to set auth for real-time features
-  if (supabase.realtime) {
-    supabase.realtime.setAuth(token);
-  }
-  
-  // For regular API calls, we'll recreate the client with the new token
-  const clientWithAuth = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -44,7 +29,4 @@ export const setSupabaseToken = (token: string) => {
       detectSessionInUrl: false,
     },
   });
-  
-  // Copy the auth client to our main supabase instance
-  Object.assign(supabase, clientWithAuth);
 };
