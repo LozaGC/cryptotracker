@@ -3,22 +3,43 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PieChart, TrendingUp, TrendingDown, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useUser } from '@clerk/clerk-react';
+import { useAuth } from "@/contexts/AuthContext";
+import { portfolioApiService } from "@/services/portfolioApiService";
 
 const PortfolioCard = () => {
   const navigate = useNavigate();
+  const { user } = useUser();
+  const { refreshToken } = useAuth();
 
-  // Mock portfolio data
-  const portfolioData = {
-    totalValue: 41550.00,
-    totalCost: 28940.00,
-    totalPnL: 12610.00,
-    holdings: [
-      { symbol: 'BTC', name: 'Bitcoin', value: 33500.00, percentage: 48.89 },
-      { symbol: 'ETH', name: 'Ethereum', value: 8050.00, percentage: 25.00 }
-    ]
-  };
+  // Fetch portfolio data using new API service
+  const { data: portfolioData } = useQuery({
+    queryKey: ['portfolio-summary-card', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      return portfolioApiService.getPortfolio(user.id, refreshToken);
+    },
+    enabled: !!user?.id,
+    refetchInterval: 60000,
+  });
 
-  const pnlPercentage = ((portfolioData.totalPnL / portfolioData.totalCost) * 100);
+  // Use real data if available, otherwise fallback to mock data
+  const totalValue = portfolioData?.total_portfolio_value || 41550.00;
+  const totalCost = portfolioData?.total_invested || 28940.00;
+  const totalPnL = portfolioData?.total_profit_or_loss || 12610.00;
+  const topHoldings = portfolioData?.holdings.slice(0, 2).map(holding => ({
+    symbol: holding.symbol,
+    name: holding.name,
+    value: holding.current_value,
+    percentage: ((holding.current_value / totalValue) * 100)
+  })) || [
+    { symbol: 'BTC', name: 'Bitcoin', value: 33500.00, percentage: 48.89 },
+    { symbol: 'ETH', name: 'Ethereum', value: 8050.00, percentage: 25.00 }
+  ];
+
+  const pnlPercentage = totalCost > 0 ? ((totalPnL / totalCost) * 100) : 0;
+  const totalHoldings = portfolioData?.holdings.length || 2;
 
   return (
     <Card className="bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300">
@@ -32,15 +53,15 @@ const PortfolioCard = () => {
           <div>
             <p className="text-sm text-gray-400">Total Value</p>
             <p className="text-2xl font-bold text-white">
-              ${portfolioData.totalValue.toLocaleString()}
+              ${totalValue.toLocaleString()}
             </p>
-            <div className={`flex items-center text-sm ${portfolioData.totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {portfolioData.totalPnL >= 0 ? (
+            <div className={`flex items-center text-sm ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {totalPnL >= 0 ? (
                 <TrendingUp className="w-4 h-4 mr-1" />
               ) : (
                 <TrendingDown className="w-4 h-4 mr-1" />
               )}
-              ${Math.abs(portfolioData.totalPnL).toLocaleString()} ({pnlPercentage.toFixed(2)}%)
+              ${Math.abs(totalPnL).toLocaleString()} ({pnlPercentage.toFixed(2)}%)
             </div>
           </div>
 
@@ -48,13 +69,13 @@ const PortfolioCard = () => {
             <div>
               <p className="text-sm text-gray-400">Total Cost</p>
               <p className="text-lg font-semibold text-white">
-                ${portfolioData.totalCost.toLocaleString()}
+                ${totalCost.toLocaleString()}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-400">Holdings</p>
               <p className="text-lg font-semibold text-white">
-                {portfolioData.holdings.length} Assets
+                {totalHoldings} Assets
               </p>
             </div>
           </div>
@@ -64,7 +85,7 @@ const PortfolioCard = () => {
         <div>
           <h4 className="text-sm font-medium text-gray-400 mb-3">Top Holdings</h4>
           <div className="space-y-3">
-            {portfolioData.holdings.map((holding, index) => (
+            {topHoldings.map((holding, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
                 <div>
                   <p className="font-medium text-white">{holding.name}</p>
@@ -72,7 +93,7 @@ const PortfolioCard = () => {
                 </div>
                 <div className="text-right">
                   <p className="font-medium text-white">${holding.value.toLocaleString()}</p>
-                  <p className="text-sm text-gray-400">{holding.percentage}%</p>
+                  <p className="text-sm text-gray-400">{holding.percentage.toFixed(1)}%</p>
                 </div>
               </div>
             ))}
