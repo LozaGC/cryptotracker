@@ -7,14 +7,10 @@ import FearGreedIndex from "@/components/FearGreedIndex";
 import SentimentAnalysis from "@/components/SentimentAnalysis";
 import MarketPulse from "@/components/MarketPulse";
 import TradingViewChart from "@/components/TradingViewChart";
-import { Button } from "@/components/ui/button";
-import { MessageCircle, Zap, Brain, Target } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Brain, Zap } from "lucide-react";
 import Header from "@/components/Header";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Animated Background Elements with Brand Colors */}
@@ -41,21 +37,6 @@ const Dashboard = () => {
                   <span>Real-time market analysis powered by advanced AI</span>
                 </p>
               </div>
-            </div>
-            
-            {/* Enhanced Chat AI Button with Brand Colors */}
-            <div className="absolute top-0 right-0">
-              <Button
-                onClick={() => navigate('/chat')}
-                className="group relative overflow-hidden bg-gradient-to-r from-red-600 via-yellow-600 to-red-500 hover:from-red-700 hover:via-yellow-700 hover:to-red-600 text-black border-0 px-8 py-4 rounded-2xl font-semibold shadow-2xl shadow-red-500/40 transition-all duration-300 hover:shadow-3xl hover:shadow-red-500/60 hover:scale-105 btn-futuristic"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-red-400 to-yellow-400 opacity-0 group-hover:opacity-20 transition-opacity duration-300 animate-pulse-subtle"></div>
-                <div className="flex items-center space-x-3">
-                  <MessageCircle className="w-6 h-6" />
-                  <span className="text-lg">Chat with AI</span>
-                  <Target className="w-5 h-5 animate-spin" />
-                </div>
-              </Button>
             </div>
           </header>
           
