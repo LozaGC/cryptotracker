@@ -16,7 +16,7 @@ type VCListSidebarProps = {
 
 const VCListSidebar: React.FC<VCListSidebarProps> = ({ vcs, selectedVCId, onSelectVC }) => {
   return (
-    <Sidebar className="w-60 bg-black/90 text-white border-r border-gray-800" collapsible>
+    <Sidebar className="w-60 bg-black/90 text-white border-r border-gray-800" collapsible="offcanvas">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Top VC Firms</SidebarGroupLabel>
@@ -43,3 +43,4 @@ const VCListSidebar: React.FC<VCListSidebarProps> = ({ vcs, selectedVCId, onSele
 };
 
 export default VCListSidebar;
+
