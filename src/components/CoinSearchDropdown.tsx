@@ -18,7 +18,7 @@ interface CoinSearchDropdownProps {
   onCoinSelect: (coin: CoinDropdownItem | null) => void;
   onCustomCoinRequested?: () => void;
   placeholder?: string;
-  isCustomCoinMode?: boolean; // hides all, disables interactions except 'Add Custom Coin'
+  isCustomCoinMode?: boolean;
 }
 
 const CoinSearchDropdown = ({
@@ -33,23 +33,28 @@ const CoinSearchDropdown = ({
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch coins from CoinGecko markets endpoint, sorted by market cap
+  // Fetch coins from CoinGecko markets endpoint
   useEffect(() => {
     let ignore = false;
     const fetchCoins = async () => {
       setLoading(true);
       try {
+        console.log('Fetching coins from CoinGecko...');
         const response = await fetch(
           'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&locale=en'
         );
         if (!response.ok) throw new Error('Failed to fetch coins');
         const marketData = await response.json();
+        console.log('Raw market data sample:', marketData.slice(0, 3));
+        
         const formattedCoins: CoinDropdownItem[] = marketData.map((coin: any) => ({
           id: coin.id,
           symbol: coin.symbol.toUpperCase(),
           name: coin.name,
           market_cap_rank: coin.market_cap_rank,
         }));
+        
+        console.log('Formatted coins sample:', formattedCoins.slice(0, 3));
         if (!ignore) setCoins(formattedCoins);
       } catch (error) {
         console.error('Error fetching coins:', error);
@@ -64,7 +69,7 @@ const CoinSearchDropdown = ({
 
   // Filter by search
   const filteredCoins = useMemo(() => {
-    if (!searchQuery) return coins;
+    if (!searchQuery) return coins.slice(0, 50); // Limit initial results
     const q = searchQuery.toLowerCase();
     return coins.filter(
       (coin) =>
@@ -77,23 +82,38 @@ const CoinSearchDropdown = ({
   if (isCustomCoinMode) return null;
 
   const handleCoinSelect = (coinId: string) => {
-    console.log('Selecting coin with ID:', coinId);
+    console.log('handleCoinSelect called with coinId:', coinId);
+    console.log('Available coins:', coins.length);
+    console.log('Looking for coin with ID:', coinId);
+    
     const foundCoin = coins.find(c => c.id === coinId);
     console.log('Found coin:', foundCoin);
+    
     if (foundCoin) {
+      console.log('Calling onCoinSelect with:', foundCoin);
       onCoinSelect(foundCoin);
+      setOpen(false);
+    } else {
+      console.error('Coin not found in coins array');
     }
-    setOpen(false);
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    console.log('Dropdown open state changing to:', newOpen);
+    setOpen(newOpen);
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+          onClick={() => {
+            console.log('Trigger button clicked, current open state:', open);
+          }}
         >
           {selectedCoin ? (
             <span className="flex items-center gap-2">
@@ -115,7 +135,10 @@ const CoinSearchDropdown = ({
           <CommandInput
             placeholder="Search coins..."
             value={searchQuery}
-            onValueChange={setSearchQuery}
+            onValueChange={(value) => {
+              console.log('Search query changed to:', value);
+              setSearchQuery(value);
+            }}
             className="text-white bg-gray-800 border-gray-700"
           />
           <CommandList className="max-h-60">
@@ -129,6 +152,7 @@ const CoinSearchDropdown = ({
                   value={coin.id}
                   onSelect={(value) => {
                     console.log('CommandItem onSelect triggered with value:', value);
+                    console.log('Coin data for selection:', coin);
                     handleCoinSelect(value);
                   }}
                   className={cn(

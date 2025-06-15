@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import CoinSearchDropdown, { CoinDropdownItem } from "./CoinSearchDropdown";
-import { useState } from "react";
 
 interface CoinSelectorProps {
   selectedCoin: CoinDropdownItem | null;
@@ -25,6 +24,7 @@ const CoinSelector = ({
 }: CoinSelectorProps) => {
   // When switching between modes, clear state accordingly
   const handleCustomCoinToggle = (toCustom: boolean) => {
+    console.log('Toggling to custom coin mode:', toCustom);
     onToggleCustomCoin(toCustom);
     if (toCustom) {
       onCoinSelect(null);
@@ -35,8 +35,18 @@ const CoinSelector = ({
 
   // When a custom coin is requested from dropdown button
   const handleCustomCoinRequested = () => {
+    console.log('Custom coin requested from dropdown');
     handleCustomCoinToggle(true);
   };
+
+  // Enhanced coin selection handler with logging
+  const handleCoinSelect = (coin: CoinDropdownItem | null) => {
+    console.log('CoinSelector: handleCoinSelect called with:', coin);
+    onCoinSelect(coin);
+  };
+
+  console.log('CoinSelector render - selectedCoin:', selectedCoin);
+  console.log('CoinSelector render - isCustomCoin:', isCustomCoin);
 
   return (
     <div className="space-y-4">
@@ -77,7 +87,7 @@ const CoinSelector = ({
           <Label className="text-gray-300">Select Cryptocurrency</Label>
           <CoinSearchDropdown
             selectedCoin={selectedCoin}
-            onCoinSelect={onCoinSelect}
+            onCoinSelect={handleCoinSelect}
             onCustomCoinRequested={handleCustomCoinRequested}
             placeholder="Search for a cryptocurrency..."
             isCustomCoinMode={isCustomCoin}
@@ -98,7 +108,10 @@ const CoinSelector = ({
             id="custom-coin"
             placeholder="e.g., MyToken, MTK"
             value={customCoinName}
-            onChange={(e) => onCustomCoinNameChange(e.target.value)}
+            onChange={(e) => {
+              console.log('Custom coin name changed to:', e.target.value);
+              onCustomCoinNameChange(e.target.value);
+            }}
             className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
           />
           <p className="text-sm text-gray-400 mt-1">
