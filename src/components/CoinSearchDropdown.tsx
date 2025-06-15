@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -75,6 +76,16 @@ const CoinSearchDropdown = ({
   // Show the dropdown only if not in custom coin mode
   if (isCustomCoinMode) return null;
 
+  const handleCoinSelect = (coinId: string) => {
+    console.log('Selecting coin with ID:', coinId);
+    const foundCoin = coins.find(c => c.id === coinId);
+    console.log('Found coin:', foundCoin);
+    if (foundCoin) {
+      onCoinSelect(foundCoin);
+    }
+    setOpen(false);
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -116,19 +127,14 @@ const CoinSearchDropdown = ({
                 <CommandItem
                   key={coin.id}
                   value={coin.id}
-                  onSelect={(v) => {
-                    // Improved: Find the coin by id
-                    const found = coins.find(c => c.id === v);
-                    if (found) {
-                      onCoinSelect(found);
-                    }
-                    setOpen(false);
+                  onSelect={(value) => {
+                    console.log('CommandItem onSelect triggered with value:', value);
+                    handleCoinSelect(value);
                   }}
-                  className={
-                    // Soft hover and click effect + transition
-                    `text-white cursor-pointer hover:bg-red-900/60 active:bg-red-900/80 transition 
-                    ${selectedCoin?.id === coin.id ? "bg-red-900/40" : ""}`
-                  }
+                  className={cn(
+                    "text-white cursor-pointer hover:bg-red-900/60 active:bg-red-900/80 transition-colors duration-200",
+                    selectedCoin?.id === coin.id ? "bg-red-900/40" : ""
+                  )}
                 >
                   <Check
                     className={cn(
@@ -151,12 +157,13 @@ const CoinSearchDropdown = ({
               <CommandItem
                 key="add-own-coin"
                 value="add-own-coin"
-                onSelect={() => {
+                onSelect={(value) => {
+                  console.log('Custom coin option selected:', value);
                   setOpen(false);
                   onCoinSelect(null);
                   if (onCustomCoinRequested) onCustomCoinRequested();
                 }}
-                className="text-white hover:bg-green-900/60 active:bg-green-900/80 cursor-pointer border-t border-gray-700 mt-1 transition"
+                className="text-white hover:bg-green-900/60 active:bg-green-900/80 cursor-pointer border-t border-gray-700 mt-1 transition-colors duration-200"
               >
                 <Plus className="mr-2 h-4 w-4 text-green-400" />
                 <div className="flex items-center gap-2 flex-1 text-green-400">
