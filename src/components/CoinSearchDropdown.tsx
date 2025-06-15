@@ -31,6 +31,7 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
     const fetchCoins = async () => {
       setLoading(true);
       try {
+        console.log('Fetching coins from CoinGecko...');
         // Use markets endpoint which gives us ranked coins with better performance
         // Fetch top 1000 coins in batches of 250 (API limit per page)
         const allCoins: Coin[] = [];
@@ -54,6 +55,7 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
           allCoins.push(...formattedCoins);
         }
 
+        console.log(`Fetched ${allCoins.length} coins successfully`);
         setCoins(allCoins);
       } catch (error) {
         console.error('Error fetching coins:', error);
@@ -67,6 +69,7 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
             name: coin.name,
             market_cap_rank: index + 1
           }));
+          console.log(`Fallback: Fetched ${fallbackCoins.length} coins`);
           setCoins(fallbackCoins);
         } catch (fallbackError) {
           console.error('Fallback fetch failed:', fallbackError);
@@ -81,14 +84,21 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
 
   // Filter coins based on search query
   const filteredCoins = useMemo(() => {
-    if (!searchQuery) return coins;
+    if (!searchQuery) return coins.slice(0, 50); // Show only top 50 initially for performance
     
     const query = searchQuery.toLowerCase();
     return coins.filter(coin => 
       coin.name.toLowerCase().includes(query) || 
       coin.symbol.toLowerCase().includes(query)
-    );
+    ).slice(0, 100); // Limit results for performance
   }, [coins, searchQuery]);
+
+  const handleCoinSelect = (coin: Coin) => {
+    console.log('Coin selected:', coin);
+    onCoinSelect(coin);
+    setOpen(false);
+    setSearchQuery("");
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -110,7 +120,7 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700" align="start">
+      <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700 z-50" align="start">
         <Command className="bg-gray-800">
           <CommandInput 
             placeholder="Search coins..." 
@@ -118,20 +128,17 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
             onValueChange={setSearchQuery}
             className="text-white bg-gray-800 border-gray-700"
           />
-          <CommandList className="max-h-60">
+          <CommandList className="max-h-60 bg-gray-800">
             <CommandEmpty className="text-gray-400 p-4">
               {loading ? "Loading coins..." : "No coins found."}
             </CommandEmpty>
-            <CommandGroup>
+            <CommandGroup className="bg-gray-800">
               {filteredCoins.map((coin) => (
                 <CommandItem
                   key={coin.id}
                   value={`${coin.symbol} ${coin.name}`}
-                  onSelect={() => {
-                    onCoinSelect(selectedCoin?.id === coin.id ? null : coin);
-                    setOpen(false);
-                  }}
-                  className="text-white hover:bg-gray-700 cursor-pointer"
+                  onSelect={() => handleCoinSelect(coin)}
+                  className="text-white hover:bg-gray-700 cursor-pointer bg-gray-800"
                 >
                   <Check
                     className={cn(
