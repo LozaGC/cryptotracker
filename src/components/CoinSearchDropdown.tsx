@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -116,12 +115,20 @@ const CoinSearchDropdown = ({
               {filteredCoins.map((coin) => (
                 <CommandItem
                   key={coin.id}
-                  value={`${coin.symbol} ${coin.name}`}
-                  onSelect={() => {
-                    onCoinSelect(coin);
+                  value={coin.id}
+                  onSelect={(v) => {
+                    // Improved: Find the coin by id
+                    const found = coins.find(c => c.id === v);
+                    if (found) {
+                      onCoinSelect(found);
+                    }
                     setOpen(false);
                   }}
-                  className="text-white hover:bg-gray-700 cursor-pointer"
+                  className={
+                    // Soft hover and click effect + transition
+                    `text-white cursor-pointer hover:bg-red-900/60 active:bg-red-900/80 transition 
+                    ${selectedCoin?.id === coin.id ? "bg-red-900/40" : ""}`
+                  }
                 >
                   <Check
                     className={cn(
@@ -149,7 +156,7 @@ const CoinSearchDropdown = ({
                   onCoinSelect(null);
                   if (onCustomCoinRequested) onCustomCoinRequested();
                 }}
-                className="text-white hover:bg-gray-700 cursor-pointer border-t border-gray-700 mt-1"
+                className="text-white hover:bg-green-900/60 active:bg-green-900/80 cursor-pointer border-t border-gray-700 mt-1 transition"
               >
                 <Plus className="mr-2 h-4 w-4 text-green-400" />
                 <div className="flex items-center gap-2 flex-1 text-green-400">
