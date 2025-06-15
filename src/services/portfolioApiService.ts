@@ -40,28 +40,77 @@ export interface PortfolioSummary {
 }
 
 class PortfolioApiService {
+  private coinCache: { [key: string]: { price: number; name: string; coin_id: string; timestamp: number } } = {};
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
   private async fetchCoinPrice(symbol: string): Promise<{ price: number; name: string; coin_id: string }> {
+    const cacheKey = symbol.toLowerCase();
+    const cached = this.coinCache[cacheKey];
+    
+    // Return cached data if it's still valid
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return {
+        price: cached.price,
+        name: cached.name,
+        coin_id: cached.coin_id
+      };
+    }
+
     try {
-      // First try to get coin info from the top 100 market data (most reliable)
+      // Use markets endpoint for better performance and correct naming
       const marketResponse = await fetch(
-        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false'
-      );
-      const marketData = await marketResponse.json();
-      
-      // Look for exact symbol match in top 100 first
-      const marketCoin = marketData.find((c: any) => 
-        c.symbol.toLowerCase() === symbol.toLowerCase()
+        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${symbol}&order=market_cap_desc&per_page=1&sparkline=false`
       );
       
-      if (marketCoin) {
-        return {
-          price: marketCoin.current_price,
-          name: marketCoin.name,
-          coin_id: marketCoin.id
-        };
+      if (marketResponse.ok) {
+        const marketData = await marketResponse.json();
+        if (marketData.length > 0) {
+          const coin = marketData[0];
+          const result = {
+            price: coin.current_price,
+            name: coin.name,
+            coin_id: coin.id
+          };
+          
+          // Cache the result
+          this.coinCache[cacheKey] = {
+            ...result,
+            timestamp: Date.now()
+          };
+          
+          return result;
+        }
       }
 
-      // Fallback to full coin list if not found in top 100
+      // Fallback: Search by symbol in markets data
+      const marketsBySymbolResponse = await fetch(
+        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&sparkline=false'
+      );
+      
+      if (marketsBySymbolResponse.ok) {
+        const allMarkets = await marketsBySymbolResponse.json();
+        const coin = allMarkets.find((c: any) => 
+          c.symbol.toLowerCase() === symbol.toLowerCase()
+        );
+        
+        if (coin) {
+          const result = {
+            price: coin.current_price,
+            name: coin.name,
+            coin_id: coin.id
+          };
+          
+          // Cache the result
+          this.coinCache[cacheKey] = {
+            ...result,
+            timestamp: Date.now()
+          };
+          
+          return result;
+        }
+      }
+
+      // Final fallback to coin list
       const coinListResponse = await fetch('https://api.coingecko.com/api/v3/coins/list');
       const coinList = await coinListResponse.json();
       
@@ -88,11 +137,19 @@ class PortfolioApiService {
         throw new Error(`Price not available for ${symbol}`);
       }
 
-      return {
+      const result = {
         price,
         name: coin.name,
         coin_id: coin.id
       };
+      
+      // Cache the result
+      this.coinCache[cacheKey] = {
+        ...result,
+        timestamp: Date.now()
+      };
+
+      return result;
     } catch (error) {
       console.error('Error fetching coin price:', error);
       throw new Error(`Unable to fetch price for ${symbol}`);
@@ -187,11 +244,12 @@ class PortfolioApiService {
     // Group holdings by symbol and calculate aggregates
     const groupedHoldings: { [symbol: string]: AggregatedHolding } = {};
 
-    // Get current prices for all unique coin IDs
+    // Get current prices for all unique coin IDs in batch for better performance
     const uniqueCoinIds = [...new Set(holdings.map(h => h.coinId))];
     const currentPrices: { [coinId: string]: number } = {};
 
     try {
+      // Batch fetch current prices
       const priceResponse = await fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${uniqueCoinIds.join(',')}&vs_currencies=usd`
       );

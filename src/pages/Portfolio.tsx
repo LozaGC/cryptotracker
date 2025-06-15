@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Sparkles, RefreshCw, User, Mail, Trash2 } from "lucide-react";
@@ -18,7 +19,7 @@ const Portfolio = () => {
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // Fetch portfolio data with longer intervals for better performance
+  // Optimized portfolio query with better caching
   const { data: portfolioData, isLoading, error, refetch } = useQuery({
     queryKey: ['portfolio-summary', user?.id],
     queryFn: async (): Promise<PortfolioSummary> => {
@@ -28,8 +29,9 @@ const Portfolio = () => {
       return portfolioApiService.getPortfolio(user.id, refreshToken);
     },
     enabled: !!user?.id,
-    refetchInterval: 300000, // Refetch every 5 minutes instead of 1 minute
-    staleTime: 120000, // Consider data stale after 2 minutes
+    refetchInterval: 600000, // Refetch every 10 minutes for better performance
+    staleTime: 300000, // Consider data stale after 5 minutes
+    retry: 2, // Reduce retry attempts
   });
 
   // Log any query errors
@@ -44,7 +46,7 @@ const Portfolio = () => {
     }
   }, [error, toast]);
 
-  // Mutation for adding new assets
+  // Optimized mutation for adding new assets
   const addAssetMutation = useMutation({
     mutationFn: async (assetData: AddAssetRequest) => {
       if (!user?.id) {
@@ -70,7 +72,7 @@ const Portfolio = () => {
     }
   });
 
-  // Mutation for deleting assets
+  // Optimized mutation for deleting assets
   const deleteAssetMutation = useMutation({
     mutationFn: async (assetId: string) => {
       if (!user?.id) {
@@ -94,41 +96,45 @@ const Portfolio = () => {
     }
   });
 
-  const handleRefresh = () => {
+  // Memoized handlers for better performance
+  const handleRefresh = useCallback(() => {
     refetch();
     toast({
       title: "Refreshed",
       description: "Portfolio data has been refreshed",
     });
-  };
+  }, [refetch, toast]);
 
-  const handleDeleteAsset = (assetId: string) => {
+  const handleDeleteAsset = useCallback((assetId: string) => {
     if (confirm('Are you sure you want to delete this asset entry?')) {
       deleteAssetMutation.mutate(assetId);
     }
-  };
+  }, [deleteAssetMutation]);
 
-  const formatCurrency = (amount: number) => {
+  // Memoized currency formatter
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2
     }).format(amount);
-  };
+  }, []);
 
-  // Convert portfolio data for analytics component
-  const analyticsHoldings = portfolioData?.holdings.flatMap(holding => 
-    holding.entries.map(entry => ({
-      id: entry.id,
-      symbol: entry.symbol,
-      name: entry.name,
-      amount: entry.quantity,
-      avgPrice: entry.price_used,
-      currentPrice: holding.current_price,
-      purchaseDate: entry.timestamp,
-      coinId: entry.coin_id
-    }))
-  ) || [];
+  // Memoized analytics holdings conversion
+  const analyticsHoldings = useMemo(() => 
+    portfolioData?.holdings.flatMap(holding => 
+      holding.entries.map(entry => ({
+        id: entry.id,
+        symbol: entry.symbol,
+        name: entry.name,
+        amount: entry.quantity,
+        avgPrice: entry.price_used,
+        currentPrice: holding.current_price,
+        purchaseDate: entry.timestamp,
+        coinId: entry.coin_id
+      }))
+    ) || [], [portfolioData?.holdings]
+  );
 
   if (isLoading) {
     return (

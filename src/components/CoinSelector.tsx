@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import CoinSearchDropdown from "./CoinSearchDropdown";
 
 interface Coin {
   id: string;
   symbol: string;
   name: string;
+  market_cap_rank?: number | null;
 }
 
 interface CoinSelectorProps {
@@ -28,27 +30,11 @@ const CoinSelector = ({
   isCustomCoin,
   onToggleCustomCoin,
 }: CoinSelectorProps) => {
-  const [coinSymbol, setCoinSymbol] = useState(selectedCoin?.symbol || '');
-
-  const handleCoinSymbolChange = (value: string) => {
-    setCoinSymbol(value);
-    if (value) {
-      onCoinSelect({
-        id: value.toLowerCase(),
-        symbol: value.toUpperCase(),
-        name: value.toUpperCase()
-      });
-    } else {
-      onCoinSelect(null);
-    }
-  };
-
   const handleCustomCoinToggle = () => {
     const newIsCustom = !isCustomCoin;
     onToggleCustomCoin(newIsCustom);
     if (newIsCustom) {
       onCoinSelect(null);
-      setCoinSymbol('');
     } else {
       onCustomCoinNameChange('');
     }
@@ -61,7 +47,7 @@ const CoinSelector = ({
           type="button"
           variant={!isCustomCoin ? "default" : "outline"}
           size="sm"
-          onClick={() => handleCustomCoinToggle()}
+          onClick={handleCustomCoinToggle}
           className={cn(
             "transition-all duration-200",
             !isCustomCoin 
@@ -69,7 +55,7 @@ const CoinSelector = ({
               : "border-gray-600 text-gray-300 hover:bg-gray-800"
           )}
         >
-          Select Coin
+          Select from CoinGecko
         </Button>
         <Button
           type="button"
@@ -89,15 +75,14 @@ const CoinSelector = ({
 
       {!isCustomCoin ? (
         <div>
-          <Label className="text-gray-300">Coin Symbol (e.g., BTC, ETH)</Label>
-          <Input
-            placeholder="BTC"
-            value={coinSymbol}
-            onChange={(e) => handleCoinSymbolChange(e.target.value)}
-            className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
+          <Label className="text-gray-300">Select Cryptocurrency</Label>
+          <CoinSearchDropdown
+            selectedCoin={selectedCoin}
+            onCoinSelect={onCoinSelect}
+            placeholder="Search for a cryptocurrency..."
           />
           <p className="text-sm text-gray-400 mt-1">
-            Enter the coin symbol (e.g., BTC for Bitcoin, ETH for Ethereum)
+            Choose from top cryptocurrencies ranked by market cap
           </p>
         </div>
       ) : (
@@ -110,6 +95,9 @@ const CoinSelector = ({
             onChange={(e) => onCustomCoinNameChange(e.target.value)}
             className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
           />
+          <p className="text-sm text-gray-400 mt-1">
+            Enter your custom coin name or symbol. You'll need to provide the price manually.
+          </p>
         </div>
       )}
     </div>
