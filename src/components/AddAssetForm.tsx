@@ -9,6 +9,7 @@ import { Plus, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AddAssetRequest, PortfolioEntry } from "@/services/portfolioApiService";
 import CoinSelector from "./CoinSelector";
+import type { CoinDropdownItem } from "./CoinSearchDropdown"; // Use correct type
 
 interface AddAssetFormProps {
   onAssetAdded: () => void;
@@ -16,15 +17,9 @@ interface AddAssetFormProps {
   isLoading: boolean;
 }
 
-interface Coin {
-  id: string;
-  symbol: string;
-  name: string;
-}
-
 const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps) => {
   const { toast } = useToast();
-  const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
+  const [selectedCoin, setSelectedCoin] = useState<CoinDropdownItem | null>(null);
   const [customCoinName, setCustomCoinName] = useState('');
   const [isCustomCoin, setIsCustomCoin] = useState(false);
   const [formData, setFormData] = useState({
@@ -35,7 +30,7 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Determine the symbol to use
     let symbol = '';
     if (isCustomCoin) {
@@ -71,12 +66,12 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
 
     // For custom coins, force custom price input
     const shouldUseRealTimePrice = !isCustomCoin && formData.use_real_time_price;
-    
+
     if (!shouldUseRealTimePrice && !formData.custom_price) {
       toast({
-        title: "Validation Error", 
-        description: isCustomCoin 
-          ? "Custom price is required for custom coins" 
+        title: "Validation Error",
+        description: isCustomCoin
+          ? "Custom price is required for custom coins"
           : "Custom price is required when not using real-time price",
         variant: "destructive",
       });
@@ -90,7 +85,7 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
         use_real_time_price: shouldUseRealTimePrice,
         custom_price: formData.custom_price ? parseFloat(formData.custom_price) : undefined
       });
-      
+
       // Reset form
       setSelectedCoin(null);
       setCustomCoinName('');
@@ -100,9 +95,9 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
         use_real_time_price: true,
         custom_price: ''
       });
-      
+
       onAssetAdded();
-      
+
       toast({
         title: "Success",
         description: "Asset added to portfolio successfully!",
@@ -153,7 +148,7 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
                 id="use-real-time"
                 checked={formData.use_real_time_price}
                 onCheckedChange={(checked) => setFormData({
-                  ...formData, 
+                  ...formData,
                   use_real_time_price: checked,
                   custom_price: checked ? '' : formData.custom_price
                 })}
@@ -203,3 +198,4 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
 };
 
 export default AddAssetForm;
+
