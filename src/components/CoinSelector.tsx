@@ -24,7 +24,7 @@ const CoinSelector = ({
 }: CoinSelectorProps) => {
   // When switching between modes, clear state accordingly
   const handleCustomCoinToggle = (toCustom: boolean) => {
-    console.log('Toggling to custom coin mode:', toCustom);
+    console.log('CoinSelector: Toggling to custom coin mode:', toCustom);
     onToggleCustomCoin(toCustom);
     if (toCustom) {
       onCoinSelect(null);
@@ -35,7 +35,7 @@ const CoinSelector = ({
 
   // When a custom coin is requested from dropdown button
   const handleCustomCoinRequested = () => {
-    console.log('Custom coin requested from dropdown');
+    console.log('CoinSelector: Custom coin requested from dropdown');
     handleCustomCoinToggle(true);
   };
 

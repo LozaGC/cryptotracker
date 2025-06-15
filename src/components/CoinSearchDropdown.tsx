@@ -81,39 +81,30 @@ const CoinSearchDropdown = ({
   // Show the dropdown only if not in custom coin mode
   if (isCustomCoinMode) return null;
 
-  const handleCoinSelect = (coinId: string) => {
-    console.log('handleCoinSelect called with coinId:', coinId);
-    console.log('Available coins:', coins.length);
-    console.log('Looking for coin with ID:', coinId);
-    
-    const foundCoin = coins.find(c => c.id === coinId);
-    console.log('Found coin:', foundCoin);
-    
-    if (foundCoin) {
-      console.log('Calling onCoinSelect with:', foundCoin);
-      onCoinSelect(foundCoin);
-      setOpen(false);
-    } else {
-      console.error('Coin not found in coins array');
+  const handleCoinSelect = (coin: CoinDropdownItem) => {
+    console.log('CoinSearchDropdown: handleCoinSelect called with:', coin);
+    onCoinSelect(coin);
+    setOpen(false);
+    setSearchQuery("");
+  };
+
+  const handleCustomCoinSelect = () => {
+    console.log('Custom coin option selected');
+    setOpen(false);
+    onCoinSelect(null);
+    if (onCustomCoinRequested) {
+      onCustomCoinRequested();
     }
   };
 
-  const handleOpenChange = (newOpen: boolean) => {
-    console.log('Dropdown open state changing to:', newOpen);
-    setOpen(newOpen);
-  };
-
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-          onClick={() => {
-            console.log('Trigger button clicked, current open state:', open);
-          }}
         >
           {selectedCoin ? (
             <span className="flex items-center gap-2">
@@ -127,18 +118,15 @@ const CoinSearchDropdown = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-full p-0 bg-gray-800 border-gray-700 z-50"
+        className="w-full p-0 bg-gray-800 border-gray-700"
         align="start"
-        style={{ maxHeight: 400, overflowY: 'auto' }}
+        style={{ width: "var(--radix-popover-trigger-width)", maxHeight: 400, overflowY: 'auto', zIndex: 9999 }}
       >
         <Command className="bg-gray-800">
           <CommandInput
             placeholder="Search coins..."
             value={searchQuery}
-            onValueChange={(value) => {
-              console.log('Search query changed to:', value);
-              setSearchQuery(value);
-            }}
+            onValueChange={setSearchQuery}
             className="text-white bg-gray-800 border-gray-700"
           />
           <CommandList className="max-h-60">
@@ -150,11 +138,7 @@ const CoinSearchDropdown = ({
                 <CommandItem
                   key={coin.id}
                   value={coin.id}
-                  onSelect={(value) => {
-                    console.log('CommandItem onSelect triggered with value:', value);
-                    console.log('Coin data for selection:', coin);
-                    handleCoinSelect(value);
-                  }}
+                  onSelect={() => handleCoinSelect(coin)}
                   className={cn(
                     "text-white cursor-pointer hover:bg-red-900/60 active:bg-red-900/80 transition-colors duration-200",
                     selectedCoin?.id === coin.id ? "bg-red-900/40" : ""
@@ -177,16 +161,11 @@ const CoinSearchDropdown = ({
                   </div>
                 </CommandItem>
               ))}
-              {/* Always show at the end */}
+              {/* Custom coin option */}
               <CommandItem
                 key="add-own-coin"
                 value="add-own-coin"
-                onSelect={(value) => {
-                  console.log('Custom coin option selected:', value);
-                  setOpen(false);
-                  onCoinSelect(null);
-                  if (onCustomCoinRequested) onCustomCoinRequested();
-                }}
+                onSelect={handleCustomCoinSelect}
                 className="text-white hover:bg-green-900/60 active:bg-green-900/80 cursor-pointer border-t border-gray-700 mt-1 transition-colors duration-200"
               >
                 <Plus className="mr-2 h-4 w-4 text-green-400" />
