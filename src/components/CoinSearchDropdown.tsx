@@ -120,8 +120,8 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700 z-50" align="start">
-        <Command className="bg-gray-800">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-gray-800 border-gray-700" align="start">
+        <Command className="bg-gray-800" shouldFilter={false}>
           <CommandInput 
             placeholder="Search coins..." 
             value={searchQuery}
@@ -136,13 +136,13 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
               {filteredCoins.map((coin) => (
                 <CommandItem
                   key={coin.id}
-                  value={`${coin.symbol} ${coin.name}`}
+                  value={coin.id}
                   onSelect={() => handleCoinSelect(coin)}
-                  className="text-white hover:bg-gray-700 cursor-pointer bg-gray-800"
+                  className="text-white hover:bg-gray-700 cursor-pointer bg-gray-800 flex items-center gap-2"
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "h-4 w-4",
                       selectedCoin?.id === coin.id ? "opacity-100" : "opacity-0"
                     )}
                   />
