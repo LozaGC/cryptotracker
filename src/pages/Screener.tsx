@@ -1,132 +1,73 @@
 
-import Header from "@/components/Header";
-import { Filter, Search, TrendingUp, TrendingDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from "react";
+import VCListSidebar, { VC } from "@/components/screener/VCListSidebar";
+import VCHoldingsTable from "@/components/screener/VCHoldingsTable";
+
+const MOCK_VCS: VC[] = [
+  { id: "multicoin", name: "Multicoin Capital" },
+  { id: "coinbase", name: "Coinbase Ventures" },
+  { id: "a16z", name: "a16z (Andreessen Horowitz)" },
+  { id: "paradigm", name: "Paradigm" },
+  { id: "binance", name: "Binance Labs" },
+  { id: "polychain", name: "Polychain Capital" },
+];
+
+const MOCK_HOLDINGS: Record<string, { symbol: string; name: string; amount: number }[]> = {
+  multicoin: [
+    { symbol: "SOL", name: "Solana", amount: 120000 },
+    { symbol: "LDO", name: "Lido DAO", amount: 500000 },
+    { symbol: "MANTA", name: "Manta Network", amount: 20000 },
+  ],
+  coinbase: [
+    { symbol: "UNI", name: "Uniswap", amount: 80000 },
+    { symbol: "MATIC", name: "Polygon", amount: 150000 },
+    { symbol: "OP", name: "Optimism", amount: 34000 },
+  ],
+  a16z: [
+    { symbol: "FIL", name: "Filecoin", amount: 400000 },
+    { symbol: "APE", name: "ApeCoin", amount: 120000 },
+    { symbol: "ARB", name: "Arbitrum", amount: 55000 },
+  ],
+  paradigm: [
+    { symbol: "ETH", name: "Ethereum", amount: 3400 },
+    { symbol: "DYDX", name: "dYdX", amount: 72000 },
+    { symbol: "BLUR", name: "Blur", amount: 200000 },
+  ],
+  binance: [
+    { symbol: "BNB", name: "Binance Coin", amount: 110000 },
+    { symbol: "SUI", name: "Sui", amount: 55000 },
+    { symbol: "AVAX", name: "Avalanche", amount: 95000 },
+  ],
+  polychain: [
+    { symbol: "DOT", name: "Polkadot", amount: 72000 },
+    { symbol: "NEAR", name: "Near Protocol", amount: 95000 },
+    { symbol: "CANTO", name: "Canto", amount: 125000 },
+  ],
+};
 
 const Screener = () => {
+  const [selectedVCId, setSelectedVCId] = useState<string>(MOCK_VCS[0].id);
+
+  const selectedVC = MOCK_VCS.find((vc) => vc.id === selectedVCId);
+
+  // Get holdings for selected VC or empty array
+  const holdings = selectedVC ? MOCK_HOLDINGS[selectedVC.id] || [] : [];
+
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-red-500/10 to-yellow-500/10 rounded-full blur-3xl animate-blob" />
-        <div className="absolute top-40 right-10 w-96 h-96 bg-gradient-to-r from-yellow-500/10 to-red-500/10 rounded-full blur-3xl animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-1/2 w-80 h-80 bg-gradient-to-r from-red-500/10 to-yellow-500/10 rounded-full blur-3xl animate-blob animation-delay-4000" />
-      </div>
-      
-      <Header />
-      <div className="pt-20 p-8 relative z-10">
-        <div className="max-w-7xl mx-auto">
-          <header className="mb-8">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 rounded-xl bg-gradient-to-r from-red-500/20 to-yellow-500/20 border border-red-500/30 shadow-lg shadow-red-500/20">
-                <Filter className="w-8 h-8 text-red-400" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-red-400 via-yellow-400 to-red-400 bg-clip-text text-transparent">
-                  Crypto Screener
-                </h1>
-                <p className="text-gray-400 flex items-center space-x-2">
-                  <Search className="w-4 h-4 text-yellow-400" />
-                  <span>Find and filter cryptocurrencies based on your criteria</span>
-                </p>
-              </div>
-            </div>
-          </header>
-
-          {/* Search and Filter Section */}
-          <Card className="mb-8 bg-gradient-to-br from-gray-900/50 to-gray-800/30 border-red-500/20">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center space-x-2">
-                <Filter className="w-5 h-5 text-red-400" />
-                <span>Filter Cryptocurrencies</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Search
-                  </label>
-                  <Input
-                    placeholder="Search by name or symbol..."
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Market Cap Range
-                  </label>
-                  <div className="flex space-x-2">
-                    <Input
-                      placeholder="Min"
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                    <Input
-                      placeholder="Max"
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Price Range
-                  </label>
-                  <div className="flex space-x-2">
-                    <Input
-                      placeholder="Min $"
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                    <Input
-                      placeholder="Max $"
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 flex space-x-4">
-                <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800">
-                  Apply Filters
-                </Button>
-                <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800">
-                  Reset
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Results Preview */}
-          <Card className="bg-gradient-to-br from-gray-900/50 to-gray-800/30 border-red-500/20">
-            <CardHeader>
-              <CardTitle className="text-white">Screener Results</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-red-500/20 to-yellow-500/20 border border-red-500/30 mb-4">
-                  <TrendingUp className="w-8 h-8 text-red-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  Ready to Screen
-                </h3>
-                <p className="text-gray-400 mb-4">
-                  Apply filters above to find cryptocurrencies that match your criteria
-                </p>
-                <div className="flex justify-center space-x-4 text-sm text-gray-500">
-                  <div className="flex items-center space-x-1">
-                    <TrendingUp className="w-4 h-4 text-green-400" />
-                    <span>Top Gainers</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <TrendingDown className="w-4 h-4 text-red-400" />
-                    <span>Top Losers</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+    <div className="flex min-h-screen bg-black text-white">
+      <VCListSidebar
+        vcs={MOCK_VCS}
+        selectedVCId={selectedVCId}
+        onSelectVC={setSelectedVCId}
+      />
+      <main className="flex-1 flex flex-col items-center justify-start pt-24 px-4 sm:px-12 bg-black/90 min-h-screen overflow-auto">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-8 bg-gradient-to-r from-red-400 via-yellow-400 to-red-400 bg-clip-text text-transparent">
+          VC Token Holdings Screener
+        </h1>
+        {selectedVC && (
+          <VCHoldingsTable vcName={selectedVC.name} holdings={holdings} />
+        )}
+      </main>
     </div>
   );
 };
