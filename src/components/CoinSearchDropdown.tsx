@@ -11,7 +11,7 @@ interface Coin {
   id: string;
   symbol: string;
   name: string;
-  market_cap_rank: number | null;
+  market_cap_rank?: number | null;
 }
 
 interface CoinSearchDropdownProps {
@@ -26,28 +26,35 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch coins from CoinGecko market data (top 250 by market cap)
+  // Fetch coins from CoinGecko market data (top 1000 by market cap)
   useEffect(() => {
     const fetchCoins = async () => {
       setLoading(true);
       try {
         // Use markets endpoint which gives us ranked coins with better performance
-        const response = await fetch(
-          'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&locale=en'
-        );
+        // Fetch top 1000 coins in batches of 250 (API limit per page)
+        const allCoins: Coin[] = [];
         
-        if (!response.ok) throw new Error('Failed to fetch coins');
-        
-        const marketData = await response.json();
-        
-        const formattedCoins: Coin[] = marketData.map((coin: any) => ({
-          id: coin.id,
-          symbol: coin.symbol.toUpperCase(),
-          name: coin.name,
-          market_cap_rank: coin.market_cap_rank
-        }));
+        for (let page = 1; page <= 4; page++) {
+          const response = await fetch(
+            `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=${page}&sparkline=false&locale=en`
+          );
+          
+          if (!response.ok) throw new Error('Failed to fetch coins');
+          
+          const marketData = await response.json();
+          
+          const formattedCoins: Coin[] = marketData.map((coin: any) => ({
+            id: coin.id,
+            symbol: coin.symbol.toUpperCase(),
+            name: coin.name,
+            market_cap_rank: coin.market_cap_rank
+          }));
 
-        setCoins(formattedCoins);
+          allCoins.push(...formattedCoins);
+        }
+
+        setCoins(allCoins);
       } catch (error) {
         console.error('Error fetching coins:', error);
         // Fallback to basic coin list if market data fails
