@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +18,7 @@ const Portfolio = () => {
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // Fetch portfolio data using new API service
+  // Fetch portfolio data with longer intervals for better performance
   const { data: portfolioData, isLoading, error, refetch } = useQuery({
     queryKey: ['portfolio-summary', user?.id],
     queryFn: async (): Promise<PortfolioSummary> => {
@@ -29,7 +28,8 @@ const Portfolio = () => {
       return portfolioApiService.getPortfolio(user.id, refreshToken);
     },
     enabled: !!user?.id,
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 300000, // Refetch every 5 minutes instead of 1 minute
+    staleTime: 120000, // Consider data stale after 2 minutes
   });
 
   // Log any query errors
@@ -143,11 +143,10 @@ const Portfolio = () => {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Animated Background */}
+      {/* Simplified Background - Reduced animations for better performance */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-40 right-10 w-96 h-96 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 left-1/2 w-80 h-80 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-red-500/5 to-orange-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-orange-500/5 to-red-500/5 rounded-full blur-3xl" />
       </div>
 
       <Header />
@@ -155,11 +154,11 @@ const Portfolio = () => {
         <div className="max-w-7xl mx-auto">
           <header className="mb-8 text-center">
             <div className="flex items-center justify-center space-x-4 mb-4">
-              <Sparkles className="w-8 h-8 text-red-400 animate-pulse" />
+              <Sparkles className="w-8 h-8 text-red-400" />
               <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-red-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
                 Smart Portfolio
               </h1>
-              <Sparkles className="w-8 h-8 text-orange-400 animate-pulse" />
+              <Sparkles className="w-8 h-8 text-orange-400" />
             </div>
             <div className="h-1 w-48 bg-gradient-to-r from-red-500 to-orange-400 mx-auto mb-4"></div>
             <p className="text-xl text-gray-400">AI-Powered Investment Tracking</p>
@@ -179,10 +178,10 @@ const Portfolio = () => {
 
           {/* Enhanced Portfolio Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300 hover:scale-105 transform">
+            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-red-500/30 transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">Total Portfolio Value</CardTitle>
-                <DollarSign className="h-5 w-5 text-green-500 group-hover:scale-110 transition-transform duration-300" />
+                <DollarSign className="h-5 w-5 text-green-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">{formatCurrency(portfolioData?.total_portfolio_value || 0)}</div>
@@ -193,10 +192,10 @@ const Portfolio = () => {
               </CardContent>
             </Card>
 
-            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-orange-500/30 transition-all duration-300 hover:scale-105 transform">
+            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-orange-500/30 transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">Total Investment</CardTitle>
-                <BarChart3 className="h-5 w-5 text-blue-500 group-hover:scale-110 transition-transform duration-300" />
+                <BarChart3 className="h-5 w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">{formatCurrency(portfolioData?.total_invested || 0)}</div>
@@ -204,10 +203,10 @@ const Portfolio = () => {
               </CardContent>
             </Card>
 
-            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-purple-500/30 transition-all duration-300 hover:scale-105 transform">
+            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-purple-500/30 transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">Total P&L</CardTitle>
-                <PieChart className="h-5 w-5 text-orange-500 group-hover:scale-110 transition-transform duration-300" />
+                <PieChart className="h-5 w-5 text-orange-500" />
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${(portfolioData?.total_profit_or_loss || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -217,10 +216,10 @@ const Portfolio = () => {
               </CardContent>
             </Card>
 
-            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-green-500/30 transition-all duration-300 hover:scale-105 transform">
+            <Card className="group bg-gradient-to-br from-gray-900/80 to-black/80 border-gray-800 hover:border-green-500/30 transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">Unique Assets</CardTitle>
-                <TrendingUp className="h-5 w-5 text-purple-500 group-hover:scale-110 transition-transform duration-300" />
+                <TrendingUp className="h-5 w-5 text-purple-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-white">{portfolioData?.holdings.length || 0}</div>
@@ -236,7 +235,7 @@ const Portfolio = () => {
           <div className="flex flex-wrap gap-4 mb-6">
             <Button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-300 hover:scale-105 transform"
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 transition-all duration-300"
             >
               <TrendingUp className="w-4 h-4 mr-2" />
               {showAddForm ? 'Hide Form' : 'Add Asset'}
@@ -244,7 +243,7 @@ const Portfolio = () => {
             <Button
               onClick={handleRefresh}
               variant="outline"
-              className="border-gray-600 text-white hover:bg-gray-800 transition-all duration-300 hover:scale-105 transform"
+              className="border-gray-600 text-white hover:bg-gray-800 transition-all duration-300"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh Data
@@ -329,7 +328,7 @@ const Portfolio = () => {
                                   variant="ghost"
                                   onClick={() => handleDeleteAsset(entry.id)}
                                   disabled={deleteAssetMutation.isPending}
-                                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-300 hover:scale-110 transform"
+                                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-300"
                                   title={`Delete entry: ${entry.quantity} ${entry.symbol} @ ${formatCurrency(entry.price_used)}`}
                                 >
                                   <Trash2 className="w-3 h-3" />

@@ -13,7 +13,7 @@ const PortfolioCard = () => {
   const { user } = useUser();
   const { refreshToken } = useAuth();
 
-  // Fetch portfolio data using new API service
+  // Fetch portfolio data with longer intervals for better performance
   const { data: portfolioData } = useQuery({
     queryKey: ['portfolio-summary-card', user?.id],
     queryFn: async () => {
@@ -21,7 +21,8 @@ const PortfolioCard = () => {
       return portfolioApiService.getPortfolio(user.id, refreshToken);
     },
     enabled: !!user?.id,
-    refetchInterval: 60000,
+    refetchInterval: 300000, // Refetch every 5 minutes
+    staleTime: 120000, // Consider data stale after 2 minutes
   });
 
   // Use real data if available, otherwise fallback to mock data
