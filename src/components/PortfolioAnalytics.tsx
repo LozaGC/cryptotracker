@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, DollarSign, BarChart3, PieChart, Target, Zap } from "lucide-react";
 import { LineChart, Line, PieChart as RechartsPieChart, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Pie } from 'recharts';
@@ -26,7 +27,7 @@ const PortfolioAnalytics = ({ holdings }: PortfolioAnalyticsProps) => {
   const pieData = holdings.map(holding => ({
     name: holding.symbol,
     value: holding.amount * holding.currentPrice,
-    percentage: ((holding.amount * holding.currentPrice) / totalValue) * 100
+    percentage: totalValue > 0 ? ((holding.amount * holding.currentPrice) / totalValue) * 100 : 0
   }));
 
   const COLORS = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#06b6d4', '#8b5cf6', '#ec4899'];
@@ -111,46 +112,55 @@ const PortfolioAnalytics = ({ holdings }: PortfolioAnalyticsProps) => {
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-center">
-            <div className="w-2/3">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1f2937', 
-                      border: '1px solid #374151',
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                    formatter={(value: number) => [formatCurrency(value), 'Value']}
-                  />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="w-1/3 space-y-2">
-              {pieData.slice(0, 5).map((item, index) => (
-                <div key={item.name} className="flex items-center space-x-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                  />
-                  <span className="text-sm text-gray-300">{item.name}</span>
-                  <span className="text-xs text-gray-500">{item.percentage.toFixed(1)}%</span>
-                </div>
-              ))}
-            </div>
+            {pieData.length === 0 || totalValue === 0 ? (
+              <div className="w-full flex items-center justify-center h-full">
+                <span className="text-gray-400 text-lg">No asset allocation data to display</span>
+              </div>
+            ) : (
+              <>
+              <div className="w-2/3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      isAnimationActive={!!pieData.length}
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#1f2937', 
+                        border: '1px solid #374151',
+                        borderRadius: '8px',
+                        color: '#fff'
+                      }}
+                      formatter={(value: number) => [formatCurrency(value), 'Value']}
+                    />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="w-1/3 space-y-2">
+                {pieData.slice(0, 5).map((item, index) => (
+                  <div key={item.name} className="flex items-center space-x-2">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className="text-sm text-gray-300">{item.name}</span>
+                    <span className="text-xs text-gray-500">{item.percentage.toFixed(1)}%</span>
+                  </div>
+                ))}
+              </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
