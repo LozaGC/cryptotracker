@@ -8,16 +8,32 @@ import { Label } from "@/components/ui/label";
 import { Plus, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AddAssetRequest, PortfolioEntry } from "@/services/portfolioApiService";
-import CoinSelector from "./CoinSelector";
-import type { CoinDropdownItem } from "./CoinSearchDropdown"; // Use correct type
+
+// Move the interfaces here since the components are now inline in Portfolio.tsx
+interface CoinDropdownItem {
+  id: string;
+  symbol: string;
+  name: string;
+  market_cap_rank: number | null;
+}
+
+interface CoinSelectorProps {
+  selectedCoin: CoinDropdownItem | null;
+  onCoinSelect: (coin: CoinDropdownItem | null) => void;
+  customCoinName: string;
+  onCustomCoinNameChange: (name: string) => void;
+  isCustomCoin: boolean;
+  onToggleCustomCoin: (isCustom: boolean) => void;
+}
 
 interface AddAssetFormProps {
   onAssetAdded: () => void;
   onAddAsset: (data: AddAssetRequest) => Promise<PortfolioEntry>;
   isLoading: boolean;
+  CoinSelector: React.ComponentType<CoinSelectorProps>;
 }
 
-const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps) => {
+const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading, CoinSelector }: AddAssetFormProps) => {
   const { toast } = useToast();
   const [selectedCoin, setSelectedCoin] = useState<CoinDropdownItem | null>(null);
   const [customCoinName, setCustomCoinName] = useState('');
@@ -198,4 +214,3 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
 };
 
 export default AddAssetForm;
-

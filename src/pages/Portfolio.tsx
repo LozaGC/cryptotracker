@@ -563,6 +563,7 @@ const Portfolio = () => {
                 onAssetAdded={() => setShowAddForm(false)}
                 onAddAsset={(data) => addAssetMutation.mutateAsync(data)}
                 isLoading={addAssetMutation.isPending}
+                CoinSelector={CoinSelector}
               />
             </div>
           )}
