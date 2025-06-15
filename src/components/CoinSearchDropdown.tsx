@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Coin {
@@ -20,7 +20,11 @@ interface CoinSearchDropdownProps {
   placeholder?: string;
 }
 
-const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select coin..." }: CoinSearchDropdownProps) => {
+const CoinSearchDropdown = ({
+  selectedCoin,
+  onCoinSelect,
+  placeholder = "Select coin...",
+}: CoinSearchDropdownProps) => {
   const [open, setOpen] = useState(false);
   const [coins, setCoins] = useState<Coin[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,35 +35,26 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
     const fetchCoins = async () => {
       setLoading(true);
       try {
-        console.log('Fetching coins from CoinGecko...');
-        // Use markets endpoint which gives us ranked coins with better performance
-        // Fetch top 1000 coins in batches of 250 (API limit per page)
+        //console.log('Fetching coins from CoinGecko...');
         const allCoins: Coin[] = [];
-        
         for (let page = 1; page <= 4; page++) {
           const response = await fetch(
             `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=${page}&sparkline=false&locale=en`
           );
-          
           if (!response.ok) throw new Error('Failed to fetch coins');
-          
           const marketData = await response.json();
-          
           const formattedCoins: Coin[] = marketData.map((coin: any) => ({
             id: coin.id,
             symbol: coin.symbol.toUpperCase(),
             name: coin.name,
-            market_cap_rank: coin.market_cap_rank
+            market_cap_rank: coin.market_cap_rank,
           }));
-
           allCoins.push(...formattedCoins);
         }
-
-        console.log(`Fetched ${allCoins.length} coins successfully`);
+        //console.log(`Fetched ${allCoins.length} coins successfully`);
         setCoins(allCoins);
       } catch (error) {
-        console.error('Error fetching coins:', error);
-        // Fallback to basic coin list if market data fails
+        //console.error('Error fetching coins:', error);
         try {
           const fallbackResponse = await fetch('https://api.coingecko.com/api/v3/coins/list');
           const fallbackData = await fallbackResponse.json();
@@ -67,37 +62,41 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
             id: coin.id,
             symbol: coin.symbol.toUpperCase(),
             name: coin.name,
-            market_cap_rank: index + 1
+            market_cap_rank: index + 1,
           }));
-          console.log(`Fallback: Fetched ${fallbackCoins.length} coins`);
           setCoins(fallbackCoins);
         } catch (fallbackError) {
-          console.error('Fallback fetch failed:', fallbackError);
+          //console.error('Fallback fetch failed:', fallbackError);
         }
       } finally {
         setLoading(false);
       }
     };
-
     fetchCoins();
   }, []);
 
   // Filter coins based on search query
   const filteredCoins = useMemo(() => {
-    if (!searchQuery) return coins.slice(0, 50); // Show only top 50 initially for performance
-    
+    if (!searchQuery) return coins.slice(0, 50);
     const query = searchQuery.toLowerCase();
-    return coins.filter(coin => 
-      coin.name.toLowerCase().includes(query) || 
-      coin.symbol.toLowerCase().includes(query)
-    ).slice(0, 100); // Limit results for performance
+    return coins
+      .filter(
+        (coin) =>
+          coin.name.toLowerCase().includes(query) ||
+          coin.symbol.toLowerCase().includes(query)
+      )
+      .slice(0, 100);
   }, [coins, searchQuery]);
 
-  const handleCoinSelect = (coin: Coin) => {
-    console.log('Coin selected:', coin);
-    onCoinSelect(coin);
-    setOpen(false);
-    setSearchQuery("");
+  // NEW: Coin selection handler for cmdk CommandItem
+  const handleItemSelect = (coinId: string) => {
+    const coin = coins.find((c) => c.id === coinId);
+    if (coin) {
+      //console.log("Coin selected:", coin);
+      onCoinSelect(coin);
+      setOpen(false);
+      setSearchQuery("");
+    }
   };
 
   return (
@@ -113,6 +112,9 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
             <span className="flex items-center gap-2">
               <span className="font-medium">{selectedCoin.symbol}</span>
               <span className="text-gray-400">- {selectedCoin.name}</span>
+              {selectedCoin.market_cap_rank && (
+                <span className="text-xs text-gray-500 ml-2">#{selectedCoin.market_cap_rank}</span>
+              )}
             </span>
           ) : (
             <span className="text-gray-400">{placeholder}</span>
@@ -120,10 +122,14 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-gray-800 border-gray-700" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0 bg-gray-800 border-gray-700 z-50"
+        align="start"
+        sideOffset={4}
+      >
         <Command className="bg-gray-800" shouldFilter={false}>
-          <CommandInput 
-            placeholder="Search coins..." 
+          <CommandInput
+            placeholder="Search coins..."
             value={searchQuery}
             onValueChange={setSearchQuery}
             className="text-white bg-gray-800 border-gray-700"
@@ -137,8 +143,10 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
                 <CommandItem
                   key={coin.id}
                   value={coin.id}
-                  onSelect={() => handleCoinSelect(coin)}
-                  className="text-white hover:bg-gray-700 cursor-pointer bg-gray-800 flex items-center gap-2"
+                  onSelect={handleItemSelect}
+                  className={cn(
+                    "text-white hover:bg-gray-700 cursor-pointer bg-gray-800 flex items-center gap-2"
+                  )}
                 >
                   <Check
                     className={cn(
