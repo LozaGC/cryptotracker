@@ -12,6 +12,7 @@ import Market from "./pages/Market";
 import Portfolio from "./pages/Portfolio";
 import Chat from "./pages/Chat";
 import NFT from "./pages/NFT";
+import Screener from "./pages/Screener";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -50,6 +51,11 @@ const App = () => (
             <Route path="/nft" element={
               <ProtectedRoute>
                 <NFT />
+              </ProtectedRoute>
+            } />
+            <Route path="/screener" element={
+              <ProtectedRoute>
+                <Screener />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
