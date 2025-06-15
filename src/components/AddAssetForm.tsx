@@ -20,7 +20,6 @@ interface Coin {
   id: string;
   symbol: string;
   name: string;
-  market_cap_rank?: number | null;
 }
 
 const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps) => {
