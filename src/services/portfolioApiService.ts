@@ -42,7 +42,26 @@ export interface PortfolioSummary {
 class PortfolioApiService {
   private async fetchCoinPrice(symbol: string): Promise<{ price: number; name: string; coin_id: string }> {
     try {
-      // First try to get coin info by symbol
+      // First try to get coin info from the top 100 market data (most reliable)
+      const marketResponse = await fetch(
+        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false'
+      );
+      const marketData = await marketResponse.json();
+      
+      // Look for exact symbol match in top 100 first
+      const marketCoin = marketData.find((c: any) => 
+        c.symbol.toLowerCase() === symbol.toLowerCase()
+      );
+      
+      if (marketCoin) {
+        return {
+          price: marketCoin.current_price,
+          name: marketCoin.name,
+          coin_id: marketCoin.id
+        };
+      }
+
+      // Fallback to full coin list if not found in top 100
       const coinListResponse = await fetch('https://api.coingecko.com/api/v3/coins/list');
       const coinList = await coinListResponse.json();
       
