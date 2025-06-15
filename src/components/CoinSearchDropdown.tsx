@@ -1,13 +1,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface Coin {
+export interface CoinDropdownItem {
   id: string;
   symbol: string;
   name: string;
@@ -15,73 +14,67 @@ interface Coin {
 }
 
 interface CoinSearchDropdownProps {
-  selectedCoin: Coin | null;
-  onCoinSelect: (coin: Coin | null) => void;
+  selectedCoin: CoinDropdownItem | null;
+  onCoinSelect: (coin: CoinDropdownItem | null) => void;
+  onCustomCoinRequested?: () => void;
   placeholder?: string;
+  isCustomCoinMode?: boolean; // hides all, disables interactions except 'Add Custom Coin'
 }
 
-const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select coin..." }: CoinSearchDropdownProps) => {
+const CoinSearchDropdown = ({
+  selectedCoin,
+  onCoinSelect,
+  onCustomCoinRequested,
+  placeholder = "Select coin...",
+  isCustomCoinMode = false,
+}: CoinSearchDropdownProps) => {
   const [open, setOpen] = useState(false);
-  const [coins, setCoins] = useState<Coin[]>([]);
+  const [coins, setCoins] = useState<CoinDropdownItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch coins from CoinGecko market data (top 250 by market cap)
+  // Fetch coins from CoinGecko markets endpoint, sorted by market cap
   useEffect(() => {
+    let ignore = false;
     const fetchCoins = async () => {
       setLoading(true);
       try {
-        // Use markets endpoint which gives us ranked coins with better performance
         const response = await fetch(
           'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&locale=en'
         );
-        
         if (!response.ok) throw new Error('Failed to fetch coins');
-        
         const marketData = await response.json();
-        
-        const formattedCoins: Coin[] = marketData.map((coin: any) => ({
+        const formattedCoins: CoinDropdownItem[] = marketData.map((coin: any) => ({
           id: coin.id,
           symbol: coin.symbol.toUpperCase(),
           name: coin.name,
-          market_cap_rank: coin.market_cap_rank
+          market_cap_rank: coin.market_cap_rank,
         }));
-
-        setCoins(formattedCoins);
+        if (!ignore) setCoins(formattedCoins);
       } catch (error) {
         console.error('Error fetching coins:', error);
-        // Fallback to basic coin list if market data fails
-        try {
-          const fallbackResponse = await fetch('https://api.coingecko.com/api/v3/coins/list');
-          const fallbackData = await fallbackResponse.json();
-          const fallbackCoins = fallbackData.slice(0, 100).map((coin: any, index: number) => ({
-            id: coin.id,
-            symbol: coin.symbol.toUpperCase(),
-            name: coin.name,
-            market_cap_rank: index + 1
-          }));
-          setCoins(fallbackCoins);
-        } catch (fallbackError) {
-          console.error('Fallback fetch failed:', fallbackError);
-        }
+        if (!ignore) setCoins([]);
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
-
     fetchCoins();
+    return () => { ignore = true; };
   }, []);
 
-  // Filter coins based on search query
+  // Filter by search
   const filteredCoins = useMemo(() => {
     if (!searchQuery) return coins;
-    
-    const query = searchQuery.toLowerCase();
-    return coins.filter(coin => 
-      coin.name.toLowerCase().includes(query) || 
-      coin.symbol.toLowerCase().includes(query)
+    const q = searchQuery.toLowerCase();
+    return coins.filter(
+      (coin) =>
+        coin.name.toLowerCase().includes(q) ||
+        coin.symbol.toLowerCase().includes(q)
     );
   }, [coins, searchQuery]);
+
+  // Show the dropdown only if not in custom coin mode
+  if (isCustomCoinMode) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -103,10 +96,14 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700" align="start">
+      <PopoverContent
+        className="w-full p-0 bg-gray-800 border-gray-700 z-50"
+        align="start"
+        style={{ maxHeight: 400, overflowY: 'auto' }}
+      >
         <Command className="bg-gray-800">
-          <CommandInput 
-            placeholder="Search coins..." 
+          <CommandInput
+            placeholder="Search coins..."
             value={searchQuery}
             onValueChange={setSearchQuery}
             className="text-white bg-gray-800 border-gray-700"
@@ -121,7 +118,7 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
                   key={coin.id}
                   value={`${coin.symbol} ${coin.name}`}
                   onSelect={() => {
-                    onCoinSelect(selectedCoin?.id === coin.id ? null : coin);
+                    onCoinSelect(coin);
                     setOpen(false);
                   }}
                   className="text-white hover:bg-gray-700 cursor-pointer"
@@ -136,11 +133,29 @@ const CoinSearchDropdown = ({ selectedCoin, onCoinSelect, placeholder = "Select 
                     <span className="font-medium">{coin.symbol}</span>
                     <span className="text-gray-400">- {coin.name}</span>
                     {coin.market_cap_rank && (
-                      <span className="text-xs text-gray-500 ml-auto">#{coin.market_cap_rank}</span>
+                      <span className="text-xs text-gray-500 ml-auto">
+                        #{coin.market_cap_rank}
+                      </span>
                     )}
                   </div>
                 </CommandItem>
               ))}
+              {/* Always show at the end */}
+              <CommandItem
+                key="add-own-coin"
+                value="add-own-coin"
+                onSelect={() => {
+                  setOpen(false);
+                  onCoinSelect(null);
+                  if (onCustomCoinRequested) onCustomCoinRequested();
+                }}
+                className="text-white hover:bg-gray-700 cursor-pointer border-t border-gray-700 mt-1"
+              >
+                <Plus className="mr-2 h-4 w-4 text-green-400" />
+                <div className="flex items-center gap-2 flex-1 text-green-400">
+                  Add Your Own Coin (Custom)
+                </div>
+              </CommandItem>
             </CommandGroup>
           </CommandList>
         </Command>
