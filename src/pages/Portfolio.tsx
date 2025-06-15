@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,22 +61,29 @@ const CoinSearchDropdown = ({
     const fetchCoins = async () => {
       setLoading(true);
       try {
-        console.log('Fetching coins from CoinGecko...');
+        console.log('Fetching top 250 coins from CoinGecko...');
         const response = await fetch(
           'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&locale=en'
         );
         if (!response.ok) throw new Error('Failed to fetch coins');
         const marketData = await response.json();
-        console.log('Raw market data sample:', marketData.slice(0, 3));
+        console.log('Fetched coins count:', marketData.length);
         
-        const formattedCoins: CoinDropdownItem[] = marketData.map((coin: any) => ({
-          id: coin.id,
-          symbol: coin.symbol.toUpperCase(),
-          name: coin.name,
-          market_cap_rank: coin.market_cap_rank,
-        }));
+        const formattedCoins: CoinDropdownItem[] = marketData
+          .map((coin: any) => ({
+            id: coin.id,
+            symbol: coin.symbol.toUpperCase(),
+            name: coin.name,
+            market_cap_rank: coin.market_cap_rank,
+          }))
+          .sort((a: CoinDropdownItem, b: CoinDropdownItem) => {
+            // Sort by market cap rank (lower rank = higher position)
+            if (a.market_cap_rank === null) return 1;
+            if (b.market_cap_rank === null) return -1;
+            return a.market_cap_rank - b.market_cap_rank;
+          });
         
-        console.log('Formatted coins sample:', formattedCoins.slice(0, 3));
+        console.log('Top 10 coins by rank:', formattedCoins.slice(0, 10));
         if (!ignore) setCoins(formattedCoins);
       } catch (error) {
         console.error('Error fetching coins:', error);
@@ -88,15 +96,20 @@ const CoinSearchDropdown = ({
     return () => { ignore = true; };
   }, []);
 
-  // Filter by search
+  // Filter by search - show all coins if no search query
   const filteredCoins = useMemo(() => {
-    if (!searchQuery) return coins.slice(0, 50); // Limit initial results
+    if (!searchQuery.trim()) {
+      console.log('No search query, showing all coins:', coins.length);
+      return coins; // Show all 250 coins when no search
+    }
     const q = searchQuery.toLowerCase();
-    return coins.filter(
+    const filtered = coins.filter(
       (coin) =>
         coin.name.toLowerCase().includes(q) ||
         coin.symbol.toLowerCase().includes(q)
     );
+    console.log('Filtered coins count:', filtered.length);
+    return filtered;
   }, [coins, searchQuery]);
 
   // Show the dropdown only if not in custom coin mode
@@ -150,18 +163,18 @@ const CoinSearchDropdown = ({
             onValueChange={setSearchQuery}
             className="text-white bg-gray-800 border-gray-700"
           />
-          <CommandList className="max-h-60">
+          <CommandList className="max-h-60 bg-gray-800">
             <CommandEmpty className="text-gray-400 p-4">
               {loading ? "Loading coins..." : "No coins found."}
             </CommandEmpty>
-            <CommandGroup>
+            <CommandGroup className="bg-gray-800">
               {filteredCoins.map((coin) => (
                 <CommandItem
                   key={coin.id}
                   value={coin.id}
                   onSelect={() => handleCoinSelect(coin)}
                   className={cn(
-                    "text-white cursor-pointer hover:bg-red-900/60 active:bg-red-900/80 transition-colors duration-200",
+                    "text-white cursor-pointer hover:bg-red-900/60 active:bg-red-900/80 transition-colors duration-200 bg-gray-800",
                     selectedCoin?.id === coin.id ? "bg-red-900/40" : ""
                   )}
                 >
@@ -187,7 +200,7 @@ const CoinSearchDropdown = ({
                 key="add-own-coin"
                 value="add-own-coin"
                 onSelect={handleCustomCoinSelect}
-                className="text-white hover:bg-green-900/60 active:bg-green-900/80 cursor-pointer border-t border-gray-700 mt-1 transition-colors duration-200"
+                className="text-white hover:bg-green-900/60 active:bg-green-900/80 cursor-pointer border-t border-gray-700 mt-1 transition-colors duration-200 bg-gray-800"
               >
                 <Plus className="mr-2 h-4 w-4 text-green-400" />
                 <div className="flex items-center gap-2 flex-1 text-green-400">
