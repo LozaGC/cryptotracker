@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import VCListSidebar, { VC } from "@/components/screener/VCListSidebar";
 import VCHoldingsTable from "@/components/screener/VCHoldingsTable";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 const MOCK_VCS: VC[] = [
   { id: "multicoin", name: "Multicoin Capital" },
@@ -54,21 +55,23 @@ const Screener = () => {
   const holdings = selectedVC ? MOCK_HOLDINGS[selectedVC.id] || [] : [];
 
   return (
-    <div className="flex min-h-screen bg-black text-white">
-      <VCListSidebar
-        vcs={MOCK_VCS}
-        selectedVCId={selectedVCId}
-        onSelectVC={setSelectedVCId}
-      />
-      <main className="flex-1 flex flex-col items-center justify-start pt-24 px-4 sm:px-12 bg-black/90 min-h-screen overflow-auto">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-8 bg-gradient-to-r from-red-400 via-yellow-400 to-red-400 bg-clip-text text-transparent">
-          VC Token Holdings Screener
-        </h1>
-        {selectedVC && (
-          <VCHoldingsTable vcName={selectedVC.name} holdings={holdings} />
-        )}
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-black text-white">
+        <VCListSidebar
+          vcs={MOCK_VCS}
+          selectedVCId={selectedVCId}
+          onSelectVC={setSelectedVCId}
+        />
+        <main className="flex-1 flex flex-col items-center justify-start pt-24 px-4 sm:px-12 bg-black/90 min-h-screen overflow-auto">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-8 bg-gradient-to-r from-red-400 via-yellow-400 to-red-400 bg-clip-text text-transparent">
+            VC Token Holdings Screener
+          </h1>
+          {selectedVC && (
+            <VCHoldingsTable vcName={selectedVC.name} holdings={holdings} />
+          )}
+        </main>
+      </div>
+    </SidebarProvider>
   );
 };
 
