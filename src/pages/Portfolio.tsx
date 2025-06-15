@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,31 +98,32 @@ const CoinSearchDropdown = ({
   // Filter by search - show all coins if no search query
   const filteredCoins = useMemo(() => {
     if (!searchQuery.trim()) {
-      console.log('No search query, showing all coins:', coins.length);
-      return coins; // Show all 250 coins when no search
+      return coins;
     }
     const q = searchQuery.toLowerCase();
-    const filtered = coins.filter(
+    return coins.filter(
       (coin) =>
         coin.name.toLowerCase().includes(q) ||
         coin.symbol.toLowerCase().includes(q)
     );
-    console.log('Filtered coins count:', filtered.length);
-    return filtered;
   }, [coins, searchQuery]);
 
   // Show the dropdown only if not in custom coin mode
   if (isCustomCoinMode) return null;
 
+  /** 
+   * Key fix here: 
+   * Use onMouseDown instead of onSelect for mouse click, 
+   * since onSelect can get triggered in keyboard events and onClick gets blocked 
+   * by the menu closing. onMouseDown handles "click" before blur/close. 
+   */
   const handleCoinSelect = (coin: CoinDropdownItem) => {
-    console.log('CoinSearchDropdown: handleCoinSelect called with:', coin);
     onCoinSelect(coin);
-    setOpen(false);
+    setOpen(false); // Must close after selection for both mouse and keyboard
     setSearchQuery("");
   };
 
   const handleCustomCoinSelect = () => {
-    console.log('Custom coin option selected');
     setOpen(false);
     onCoinSelect(null);
     if (onCustomCoinRequested) {
@@ -154,7 +154,12 @@ const CoinSearchDropdown = ({
       <PopoverContent
         className="w-full p-0 bg-gray-800 border-gray-700"
         align="start"
-        style={{ width: "var(--radix-popover-trigger-width)", maxHeight: 400, overflowY: 'auto', zIndex: 9999 }}
+        style={{
+          width: "var(--radix-popover-trigger-width)",
+          maxHeight: 400,
+          overflowY: "auto",
+          zIndex: 9999,
+        }}
       >
         <Command className="bg-gray-800">
           <CommandInput
@@ -172,11 +177,14 @@ const CoinSearchDropdown = ({
                 <CommandItem
                   key={coin.id}
                   value={coin.id}
+                  // --- THE KEY FIX: use onMouseDown for mouse, onSelect for keyboard
+                  onMouseDown={() => handleCoinSelect(coin)}
                   onSelect={() => handleCoinSelect(coin)}
                   className={cn(
                     "text-white cursor-pointer hover:bg-red-900/60 active:bg-red-900/80 transition-colors duration-200 bg-gray-800",
                     selectedCoin?.id === coin.id ? "bg-red-900/40" : ""
                   )}
+                  tabIndex={0}
                 >
                   <Check
                     className={cn(
@@ -199,6 +207,7 @@ const CoinSearchDropdown = ({
               <CommandItem
                 key="add-own-coin"
                 value="add-own-coin"
+                onMouseDown={handleCustomCoinSelect}
                 onSelect={handleCustomCoinSelect}
                 className="text-white hover:bg-green-900/60 active:bg-green-900/80 cursor-pointer border-t border-gray-700 mt-1 transition-colors duration-200 bg-gray-800"
               >

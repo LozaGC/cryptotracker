@@ -50,6 +50,9 @@ const PortfolioAnalytics = ({ holdings }: PortfolioAnalyticsProps) => {
     }).format(amount);
   };
 
+  // Render pie chart only if there is at least one holding with value > 0
+  const hasPieData = pieData.length > 0 && totalValue > 0;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
       {/* Portfolio Performance Chart */}
@@ -111,46 +114,54 @@ const PortfolioAnalytics = ({ holdings }: PortfolioAnalyticsProps) => {
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-center">
-            <div className="w-2/3">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1f2937', 
-                      border: '1px solid #374151',
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                    formatter={(value: number) => [formatCurrency(value), 'Value']}
-                  />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="w-1/3 space-y-2">
-              {pieData.slice(0, 5).map((item, index) => (
-                <div key={item.name} className="flex items-center space-x-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                  />
-                  <span className="text-sm text-gray-300">{item.name}</span>
-                  <span className="text-xs text-gray-500">{item.percentage.toFixed(1)}%</span>
+            {hasPieData ? (
+              <>
+                <div className="w-2/3">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#1f2937', 
+                          border: '1px solid #374151',
+                          borderRadius: '8px',
+                          color: '#fff'
+                        }}
+                        formatter={(value: number) => [formatCurrency(value), 'Value']}
+                      />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
+                <div className="w-1/3 space-y-2">
+                  {pieData.slice(0, 5).map((item, index) => (
+                    <div key={item.name} className="flex items-center space-x-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span className="text-sm text-gray-300">{item.name}</span>
+                      <span className="text-xs text-gray-500">{item.percentage.toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="w-full flex justify-center items-center h-full">
+                <span className="text-gray-500">No asset data found</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
