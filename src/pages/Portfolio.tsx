@@ -1,8 +1,12 @@
-
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Sparkles, RefreshCw, User, Mail, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Sparkles, RefreshCw, User, Mail, Trash2, Check, ChevronDown, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import Header from "@/components/Header";
 import PortfolioAnalytics from "@/components/PortfolioAnalytics";
 import AddAssetForm from "@/components/AddAssetForm";
@@ -11,6 +15,302 @@ import { useUser } from '@clerk/clerk-react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { portfolioApiService, type AddAssetRequest, type PortfolioSummary, type AggregatedHolding } from "@/services/portfolioApiService";
+
+// Interfaces for coin components
+interface CoinDropdownItem {
+  id: string;
+  symbol: string;
+  name: string;
+  market_cap_rank: number | null;
+}
+
+interface CoinSearchDropdownProps {
+  selectedCoin: CoinDropdownItem | null;
+  onCoinSelect: (coin: CoinDropdownItem | null) => void;
+  onCustomCoinRequested?: () => void;
+  placeholder?: string;
+  isCustomCoinMode?: boolean;
+}
+
+interface CoinSelectorProps {
+  selectedCoin: CoinDropdownItem | null;
+  onCoinSelect: (coin: CoinDropdownItem | null) => void;
+  customCoinName: string;
+  onCustomCoinNameChange: (name: string) => void;
+  isCustomCoin: boolean;
+  onToggleCustomCoin: (isCustom: boolean) => void;
+}
+
+// CoinSearchDropdown component inline
+const CoinSearchDropdown = ({
+  selectedCoin,
+  onCoinSelect,
+  onCustomCoinRequested,
+  placeholder = "Select coin...",
+  isCustomCoinMode = false,
+}: CoinSearchDropdownProps) => {
+  const [open, setOpen] = useState(false);
+  const [coins, setCoins] = useState<CoinDropdownItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Fetch coins from CoinGecko markets endpoint
+  useEffect(() => {
+    let ignore = false;
+    const fetchCoins = async () => {
+      setLoading(true);
+      try {
+        console.log('Fetching coins from CoinGecko...');
+        const response = await fetch(
+          'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&locale=en'
+        );
+        if (!response.ok) throw new Error('Failed to fetch coins');
+        const marketData = await response.json();
+        console.log('Raw market data sample:', marketData.slice(0, 3));
+        
+        const formattedCoins: CoinDropdownItem[] = marketData.map((coin: any) => ({
+          id: coin.id,
+          symbol: coin.symbol.toUpperCase(),
+          name: coin.name,
+          market_cap_rank: coin.market_cap_rank,
+        }));
+        
+        console.log('Formatted coins sample:', formattedCoins.slice(0, 3));
+        if (!ignore) setCoins(formattedCoins);
+      } catch (error) {
+        console.error('Error fetching coins:', error);
+        if (!ignore) setCoins([]);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
+    fetchCoins();
+    return () => { ignore = true; };
+  }, []);
+
+  // Filter by search
+  const filteredCoins = useMemo(() => {
+    if (!searchQuery) return coins.slice(0, 50); // Limit initial results
+    const q = searchQuery.toLowerCase();
+    return coins.filter(
+      (coin) =>
+        coin.name.toLowerCase().includes(q) ||
+        coin.symbol.toLowerCase().includes(q)
+    );
+  }, [coins, searchQuery]);
+
+  // Show the dropdown only if not in custom coin mode
+  if (isCustomCoinMode) return null;
+
+  const handleCoinSelect = (coin: CoinDropdownItem) => {
+    console.log('CoinSearchDropdown: handleCoinSelect called with:', coin);
+    onCoinSelect(coin);
+    setOpen(false);
+    setSearchQuery("");
+  };
+
+  const handleCustomCoinSelect = () => {
+    console.log('Custom coin option selected');
+    setOpen(false);
+    onCoinSelect(null);
+    if (onCustomCoinRequested) {
+      onCustomCoinRequested();
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+        >
+          {selectedCoin ? (
+            <span className="flex items-center gap-2">
+              <span className="font-medium">{selectedCoin.symbol}</span>
+              <span className="text-gray-400">- {selectedCoin.name}</span>
+            </span>
+          ) : (
+            <span className="text-gray-400">{placeholder}</span>
+          )}
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-full p-0 bg-gray-800 border-gray-700"
+        align="start"
+        style={{ width: "var(--radix-popover-trigger-width)", maxHeight: 400, overflowY: 'auto', zIndex: 9999 }}
+      >
+        <Command className="bg-gray-800">
+          <CommandInput
+            placeholder="Search coins..."
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+            className="text-white bg-gray-800 border-gray-700"
+          />
+          <CommandList className="max-h-60">
+            <CommandEmpty className="text-gray-400 p-4">
+              {loading ? "Loading coins..." : "No coins found."}
+            </CommandEmpty>
+            <CommandGroup>
+              {filteredCoins.map((coin) => (
+                <CommandItem
+                  key={coin.id}
+                  value={coin.id}
+                  onSelect={() => handleCoinSelect(coin)}
+                  className={cn(
+                    "text-white cursor-pointer hover:bg-red-900/60 active:bg-red-900/80 transition-colors duration-200",
+                    selectedCoin?.id === coin.id ? "bg-red-900/40" : ""
+                  )}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selectedCoin?.id === coin.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="font-medium">{coin.symbol}</span>
+                    <span className="text-gray-400">- {coin.name}</span>
+                    {coin.market_cap_rank && (
+                      <span className="text-xs text-gray-500 ml-auto">
+                        #{coin.market_cap_rank}
+                      </span>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
+              {/* Custom coin option */}
+              <CommandItem
+                key="add-own-coin"
+                value="add-own-coin"
+                onSelect={handleCustomCoinSelect}
+                className="text-white hover:bg-green-900/60 active:bg-green-900/80 cursor-pointer border-t border-gray-700 mt-1 transition-colors duration-200"
+              >
+                <Plus className="mr-2 h-4 w-4 text-green-400" />
+                <div className="flex items-center gap-2 flex-1 text-green-400">
+                  Add Your Own Coin (Custom)
+                </div>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+// CoinSelector component inline
+const CoinSelector = ({
+  selectedCoin,
+  onCoinSelect,
+  customCoinName,
+  onCustomCoinNameChange,
+  isCustomCoin,
+  onToggleCustomCoin,
+}: CoinSelectorProps) => {
+  // When switching between modes, clear state accordingly
+  const handleCustomCoinToggle = (toCustom: boolean) => {
+    console.log('CoinSelector: Toggling to custom coin mode:', toCustom);
+    onToggleCustomCoin(toCustom);
+    if (toCustom) {
+      onCoinSelect(null);
+    } else {
+      onCustomCoinNameChange('');
+    }
+  };
+
+  // When a custom coin is requested from dropdown button
+  const handleCustomCoinRequested = () => {
+    console.log('CoinSelector: Custom coin requested from dropdown');
+    handleCustomCoinToggle(true);
+  };
+
+  // Enhanced coin selection handler with logging
+  const handleCoinSelect = (coin: CoinDropdownItem | null) => {
+    console.log('CoinSelector: handleCoinSelect called with:', coin);
+    onCoinSelect(coin);
+  };
+
+  console.log('CoinSelector render - selectedCoin:', selectedCoin);
+  console.log('CoinSelector render - isCustomCoin:', isCustomCoin);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center space-x-2">
+        <Button
+          type="button"
+          variant={!isCustomCoin ? "default" : "outline"}
+          size="sm"
+          onClick={() => handleCustomCoinToggle(false)}
+          className={cn(
+            "transition-all duration-200",
+            !isCustomCoin
+              ? "bg-red-600 hover:bg-red-700 text-white"
+              : "border-gray-600 text-gray-300 hover:bg-gray-800"
+          )}
+        >
+          Select from CoinGecko
+        </Button>
+        <Button
+          type="button"
+          variant={isCustomCoin ? "default" : "outline"}
+          size="sm"
+          onClick={() => handleCustomCoinToggle(true)}
+          className={cn(
+            "transition-all duration-200",
+            isCustomCoin
+              ? "bg-red-600 hover:bg-red-700 text-white"
+              : "border-gray-600 text-gray-300 hover:bg-gray-800"
+          )}
+        >
+          Custom Coin
+        </Button>
+      </div>
+
+      {/* CoinGecko Selection Mode */}
+      {!isCustomCoin && (
+        <div>
+          <Label className="text-gray-300">Select Cryptocurrency</Label>
+          <CoinSearchDropdown
+            selectedCoin={selectedCoin}
+            onCoinSelect={handleCoinSelect}
+            onCustomCoinRequested={handleCustomCoinRequested}
+            placeholder="Search for a cryptocurrency..."
+            isCustomCoinMode={isCustomCoin}
+          />
+          <p className="text-sm text-gray-400 mt-1">
+            Choose from top cryptocurrencies ranked by market cap or add your own coin if not listed.
+          </p>
+        </div>
+      )}
+
+      {/* Custom Coin Mode */}
+      {isCustomCoin && (
+        <div>
+          <Label htmlFor="custom-coin" className="text-gray-300">
+            Custom Coin Name/Symbol
+          </Label>
+          <Input
+            id="custom-coin"
+            placeholder="e.g., MyToken, MTK"
+            value={customCoinName}
+            onChange={(e) => {
+              console.log('Custom coin name changed to:', e.target.value);
+              onCustomCoinNameChange(e.target.value);
+            }}
+            className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
+          />
+          <p className="text-sm text-gray-400 mt-1">
+            Enter your custom coin name or symbol. You'll need to provide the price manually.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Portfolio = () => {
   const { user } = useUser();
