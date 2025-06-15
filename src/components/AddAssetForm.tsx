@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AddAssetRequest, PortfolioEntry } from "@/services/portfolioApiService";
+import CoinSelector from "./CoinSelector";
 
 interface AddAssetFormProps {
   onAssetAdded: () => void;
@@ -14,10 +16,18 @@ interface AddAssetFormProps {
   isLoading: boolean;
 }
 
+interface Coin {
+  id: string;
+  symbol: string;
+  name: string;
+}
+
 const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps) => {
   const { toast } = useToast();
+  const [selectedCoin, setSelectedCoin] = useState<Coin | null>(null);
+  const [customCoinName, setCustomCoinName] = useState('');
+  const [isCustomCoin, setIsCustomCoin] = useState(false);
   const [formData, setFormData] = useState({
-    symbol: '',
     quantity: '',
     use_real_time_price: true,
     custom_price: ''
@@ -26,19 +36,48 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.symbol || !formData.quantity) {
+    // Determine the symbol to use
+    let symbol = '';
+    if (isCustomCoin) {
+      if (!customCoinName.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a custom coin name/symbol",
+          variant: "destructive",
+        });
+        return;
+      }
+      symbol = customCoinName.trim();
+    } else {
+      if (!selectedCoin) {
+        toast({
+          title: "Validation Error",
+          description: "Please select a cryptocurrency",
+          variant: "destructive",
+        });
+        return;
+      }
+      symbol = selectedCoin.symbol;
+    }
+
+    if (!formData.quantity) {
       toast({
         title: "Validation Error",
-        description: "Symbol and quantity are required",
+        description: "Quantity is required",
         variant: "destructive",
       });
       return;
     }
 
-    if (!formData.use_real_time_price && !formData.custom_price) {
+    // For custom coins, force custom price input
+    const shouldUseRealTimePrice = !isCustomCoin && formData.use_real_time_price;
+    
+    if (!shouldUseRealTimePrice && !formData.custom_price) {
       toast({
         title: "Validation Error", 
-        description: "Custom price is required when not using real-time price",
+        description: isCustomCoin 
+          ? "Custom price is required for custom coins" 
+          : "Custom price is required when not using real-time price",
         variant: "destructive",
       });
       return;
@@ -46,14 +85,17 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
 
     try {
       await onAddAsset({
-        symbol: formData.symbol.trim().toUpperCase(),
+        symbol: symbol.toUpperCase(),
         quantity: parseFloat(formData.quantity),
-        use_real_time_price: formData.use_real_time_price,
+        use_real_time_price: shouldUseRealTimePrice,
         custom_price: formData.custom_price ? parseFloat(formData.custom_price) : undefined
       });
       
+      // Reset form
+      setSelectedCoin(null);
+      setCustomCoinName('');
+      setIsCustomCoin(false);
       setFormData({
-        symbol: '',
         quantity: '',
         use_real_time_price: true,
         custom_price: ''
@@ -79,51 +121,56 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="symbol" className="text-gray-300">Symbol</Label>
-              <Input
-                id="symbol"
-                placeholder="e.g., BTC, ETH"
-                value={formData.symbol}
-                onChange={(e) => setFormData({...formData, symbol: e.target.value})}
-                className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
-              />
-            </div>
-            <div>
-              <Label htmlFor="quantity" className="text-gray-300">Quantity</Label>
-              <Input
-                id="quantity"
-                type="number"
-                step="0.00000001"
-                placeholder="0.5"
-                value={formData.quantity}
-                onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-                className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
-              />
-            </div>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Coin Selection */}
+          <CoinSelector
+            selectedCoin={selectedCoin}
+            onCoinSelect={setSelectedCoin}
+            customCoinName={customCoinName}
+            onCustomCoinNameChange={setCustomCoinName}
+            isCustomCoin={isCustomCoin}
+            onToggleCustomCoin={setIsCustomCoin}
+          />
 
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="use-real-time"
-              checked={formData.use_real_time_price}
-              onCheckedChange={(checked) => setFormData({
-                ...formData, 
-                use_real_time_price: checked,
-                custom_price: checked ? '' : formData.custom_price
-              })}
-              className="data-[state=checked]:bg-red-600"
+          {/* Quantity */}
+          <div>
+            <Label htmlFor="quantity" className="text-gray-300">Quantity</Label>
+            <Input
+              id="quantity"
+              type="number"
+              step="0.00000001"
+              placeholder="0.5"
+              value={formData.quantity}
+              onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+              className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
             />
-            <Label htmlFor="use-real-time" className="text-gray-300">
-              Use real-time price from CoinGecko
-            </Label>
           </div>
 
-          {!formData.use_real_time_price && (
+          {/* Price Settings - Only show for CoinGecko coins */}
+          {!isCustomCoin && (
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="use-real-time"
+                checked={formData.use_real_time_price}
+                onCheckedChange={(checked) => setFormData({
+                  ...formData, 
+                  use_real_time_price: checked,
+                  custom_price: checked ? '' : formData.custom_price
+                })}
+                className="data-[state=checked]:bg-red-600"
+              />
+              <Label htmlFor="use-real-time" className="text-gray-300">
+                Use real-time price from CoinGecko
+              </Label>
+            </div>
+          )}
+
+          {/* Custom Price Input - Show when not using real-time price OR when using custom coin */}
+          {(isCustomCoin || !formData.use_real_time_price) && (
             <div>
-              <Label htmlFor="custom-price" className="text-gray-300">Custom Price (USD)</Label>
+              <Label htmlFor="custom-price" className="text-gray-300">
+                {isCustomCoin ? 'Price (USD) *' : 'Custom Price (USD)'}
+              </Label>
               <Input
                 id="custom-price"
                 type="number"
@@ -133,6 +180,11 @@ const AddAssetForm = ({ onAssetAdded, onAddAsset, isLoading }: AddAssetFormProps
                 onChange={(e) => setFormData({...formData, custom_price: e.target.value})}
                 className="bg-gray-800 border-gray-700 text-white focus:border-red-500 transition-colors duration-300"
               />
+              {isCustomCoin && (
+                <p className="text-sm text-gray-400 mt-1">
+                  Since this is a custom coin, you must specify the price manually
+                </p>
+              )}
             </div>
           )}
 
