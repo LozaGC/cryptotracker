@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,7 @@ const CoinSearchDropdown = ({
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Fetch coins from CoinGecko markets endpoint
   useEffect(() => {
     let ignore = false;
     const fetchCoins = async () => {
@@ -66,7 +68,7 @@ const CoinSearchDropdown = ({
         if (!response.ok) throw new Error('Failed to fetch coins');
         const marketData = await response.json();
         console.log('Fetched coins count:', marketData.length);
-
+        
         const formattedCoins: CoinDropdownItem[] = marketData
           .map((coin: any) => ({
             id: coin.id,
@@ -75,11 +77,12 @@ const CoinSearchDropdown = ({
             market_cap_rank: coin.market_cap_rank,
           }))
           .sort((a: CoinDropdownItem, b: CoinDropdownItem) => {
+            // Sort by market cap rank (lower rank = higher position)
             if (a.market_cap_rank === null) return 1;
             if (b.market_cap_rank === null) return -1;
             return a.market_cap_rank - b.market_cap_rank;
           });
-
+        
         console.log('Top 10 coins by rank:', formattedCoins.slice(0, 10));
         if (!ignore) setCoins(formattedCoins);
       } catch (error) {
@@ -93,10 +96,11 @@ const CoinSearchDropdown = ({
     return () => { ignore = true; };
   }, []);
 
+  // Filter by search - show all coins if no search query
   const filteredCoins = useMemo(() => {
     if (!searchQuery.trim()) {
       console.log('No search query, showing all coins:', coins.length);
-      return coins;
+      return coins; // Show all 250 coins when no search
     }
     const q = searchQuery.toLowerCase();
     const filtered = coins.filter(
@@ -108,15 +112,12 @@ const CoinSearchDropdown = ({
     return filtered;
   }, [coins, searchQuery]);
 
+  // Show the dropdown only if not in custom coin mode
   if (isCustomCoinMode) return null;
 
-  // Improved: Use value from CommandItem and select coin by id
-  const handleCoinSelectById = (id: string) => {
-    const coin = coins.find(c => c.id === id);
-    if (coin) {
-      console.log('CoinSearchDropdown: handleCoinSelectById selected:', coin);
-      onCoinSelect(coin);
-    }
+  const handleCoinSelect = (coin: CoinDropdownItem) => {
+    console.log('CoinSearchDropdown: handleCoinSelect called with:', coin);
+    onCoinSelect(coin);
     setOpen(false);
     setSearchQuery("");
   };
@@ -171,15 +172,7 @@ const CoinSearchDropdown = ({
                 <CommandItem
                   key={coin.id}
                   value={coin.id}
-                  // Use value-based onSelect, which works for both mouse & keyboard in shadcn/cmdk
-                  onSelect={(value: string) => {
-                    // If it's the custom coin option, do not select a coin
-                    if (value === "add-own-coin") {
-                      handleCustomCoinSelect();
-                    } else {
-                      handleCoinSelectById(value);
-                    }
-                  }}
+                  onSelect={() => handleCoinSelect(coin)}
                   className={cn(
                     "text-white cursor-pointer hover:bg-red-900/60 active:bg-red-900/80 transition-colors duration-200 bg-gray-800",
                     selectedCoin?.id === coin.id ? "bg-red-900/40" : ""
@@ -206,7 +199,7 @@ const CoinSearchDropdown = ({
               <CommandItem
                 key="add-own-coin"
                 value="add-own-coin"
-                onSelect={() => handleCustomCoinSelect()}
+                onSelect={handleCustomCoinSelect}
                 className="text-white hover:bg-green-900/60 active:bg-green-900/80 cursor-pointer border-t border-gray-700 mt-1 transition-colors duration-200 bg-gray-800"
               >
                 <Plus className="mr-2 h-4 w-4 text-green-400" />
